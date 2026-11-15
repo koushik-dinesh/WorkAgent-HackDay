@@ -1,0 +1,99 @@
+// Shared setup for integration tests. Runs against DB_TEST_NAME (NODE_ENV=test).
+import request from 'supertest';
+import { config } from '../src/config/index.js';
+import { migrate } from '../src/db/migrate.js';
+import { pool } from '../src/db/pool.js';
+import * as users from '../src/repositories/usersRepository.js';
+import { hashPassword } from '../src/services/authService.js';
+
+if (!config.isTest) throw new Error('Tests must run with NODE_ENV=test');
+
+export const PASSWORD = 'correct-horse-battery-staple';
+
+// The test database is shared and every test file wipes it. Two test runs at the same time
+// (e.g. `npm test` in two terminals) would delete each other's rows mid-test and wait on each
+// other's row locks. A MySQL advisory lock, held by this process until closeDatabase(),
+// makes a second run wait for the first instead.
+const LOCK_NAME = `${config.db.database}:test-suite`;
+const LOCK_WAIT_SECONDS = 600;
+let lockConn = null;
+
+async function lockTestDatabase() {
+  if (lockConn) return;
+  const conn = await pool.getConnection();
+  const [[{ got }]] = await conn.query('SELECT GET_LOCK(?, ?) AS got', [LOCK_NAME, LOCK_WAIT_SECONDS]);
+  if (got !== 1) {
+    conn.release();
+    throw new Error(`Another test run has been using ${config.db.database} for over ${LOCK_WAIT_SECONDS}s`);
+  }
+  lockConn = conn;
+}
+
+export async function resetDatabase() {
+  await lockTestDatabase();
+  await migrate();
+  // Migration 018 (action intelligence): plans cascade to executions; bot sessions and webhook
+  // events reference meetings/records with SET NULL or nothing.
+  await pool.query('DELETE FROM action_plans');
+  await pool.query('DELETE FROM meeting_bot_sessions');
+  await pool.query('DELETE FROM vexa_webhook_events');
+  // Migration 011 bookkeeping (references meetings, items, records and connections).
+  await pool.query('DELETE FROM action_item_exports');
+  await pool.query('DELETE FROM meeting_transcript_imports');
+  // Migrations 012-016 (features 2-6). Most rows cascade with users/meetings; these do not.
+  await pool.query('DELETE FROM mock_records'); // 017: marker rows only
+  await pool.query('DELETE FROM assistant_conversations'); // cascades to commands and messages
+  await pool.query('DELETE FROM weekly_digests'); // cascades to recipients
+  await pool.query('DELETE FROM duplicate_candidates');
+  await pool.query('DELETE FROM work_item_embeddings');
+  await pool.query('DELETE FROM app_settings');
+  await pool.query('DELETE FROM kpi_access_log');
+  await pool.query('DELETE FROM meetings'); // cascades to participants, transcripts, segments, runs, items, schedules, invitees, decisions
+  await pool.query('DELETE FROM email_messages WHERE meeting_id IS NULL');
+  await pool.query('DELETE FROM action_items'); // items from other sources have no meeting to cascade from
+  await pool.query('DELETE FROM user_groups'); // cascades to members and nesting
+  await pool.query('UPDATE users SET department_id = NULL');
+  await pool.query('DELETE FROM departments');
+  await pool.query('DELETE FROM jobs');
+  await pool.query('DELETE FROM audit_logs');
+  // Integrations (Phase 3A): records/activities and resources reference connections and projects
+  // without cascading, so they go first (children before parents).
+  await pool.query('DELETE FROM record_links');
+  await pool.query('DELETE FROM activities');
+  await pool.query('DELETE FROM external_records');
+  await pool.query('DELETE FROM external_identities');
+  await pool.query('DELETE FROM webhook_deliveries');
+  await pool.query('DELETE FROM integration_resources'); // cascades to sync cursors
+  await pool.query('DELETE FROM integration_connections'); // cascades to credentials, auth states
+  // Projects/teams reference users without cascading (history must survive in the app), so they go first.
+  await pool.query('DELETE FROM projects'); // cascades to project_members
+  await pool.query('DELETE FROM teams'); // cascades to team_members
+  await pool.query('DELETE FROM users'); // cascades to aliases, sessions, invitations
+}
+
+export async function createUser({ email, role = 'employee', isActive = true, password = PASSWORD, fullName }) {
+  const id = await users.create({
+    email,
+    fullName: fullName ?? `Test ${role}`,
+    role,
+    passwordHash: await hashPassword(password),
+  });
+  if (!isActive) await pool.execute('UPDATE users SET is_active = FALSE WHERE id = ?', [id]);
+  return id;
+}
+
+/** Logs in through the API and returns the session cookie string. */
+export async function loginCookie(app, email, password = PASSWORD) {
+  const res = await request(app).post('/api/v1/auth/login').send({ email, password });
+  if (res.status !== 200) throw new Error(`login failed for ${email}: ${res.status}`);
+  return res.headers['set-cookie'].find((c) => c.startsWith('mta_session='));
+}
+
+export async function closeDatabase() {
+  if (lockConn) {
+    await lockConn.query('SELECT RELEASE_LOCK(?)', [LOCK_NAME]);
+    lockConn.release();
+    lockConn = null;
+  }
+  await pool.end();
+}

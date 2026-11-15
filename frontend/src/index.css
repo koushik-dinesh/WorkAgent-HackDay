@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+/* Dark mode follows the `dark` class on <html> (components/theme.js), not only the system setting,
+   so people can choose. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --wa-bg: #f8fafc;
+  --wa-fg: #0f172a;
+}
+body {
+  background: var(--wa-bg);
+  color: var(--wa-fg);
+}
+
+/* Dark theme for the whole app. The pages use a small set of slate utilities (white cards, slate
+   text and borders); these unlayered rules re-map exactly those in dark mode, so every existing
+   page gets a consistent dark theme without per-page changes. New components may also use
+   `dark:` variants directly. */
+html.dark {
+  --wa-bg: #0b1220;
+  --wa-fg: #e2e8f0;
+  --wa-surface: #111827;
+  --wa-surface-2: #1e293b;
+  --wa-border: #334155;
+  --wa-border-soft: #1f2a3b;
+  --wa-muted: #94a3b8;
+}
+html.dark .bg-white { background-color: var(--wa-surface); }
+html.dark .bg-slate-50 { background-color: #0f172a; }
+html.dark .bg-slate-100 { background-color: var(--wa-surface-2); }
+html.dark .bg-slate-200 { background-color: #273449; }
+html.dark .hover\:bg-slate-50:hover { background-color: #172033; }
+html.dark .hover\:bg-slate-100:hover { background-color: #1e293b; }
+html.dark .text-slate-900, html.dark .text-slate-800 { color: #e2e8f0; }
+html.dark .text-slate-700 { color: #cbd5e1; }
+html.dark .text-slate-600 { color: #a5b4c8; }
+html.dark .text-slate-500, html.dark .text-slate-400 { color: var(--wa-muted); }
+html.dark .hover\:text-slate-900:hover { color: #f8fafc; }
+html.dark .border-slate-100, html.dark .border-slate-200 { border-color: var(--wa-border-soft); }
+html.dark .border-slate-300 { border-color: var(--wa-border); }
+html.dark .divide-slate-100 > :not(:last-child), html.dark .divide-slate-200 > :not(:last-child) { border-color: var(--wa-border-soft); }
+html.dark .border-slate-900 { border-color: #cbd5e1; }
+/* Primary buttons and the user's chat bubbles invert. */
+html.dark .bg-slate-900 { background-color: #e2e8f0; color: #0f172a; }
+html.dark .bg-slate-900.text-white, html.dark .bg-slate-900 .text-white { color: #0f172a; }
+html.dark .hover\:bg-slate-800:hover { background-color: #f8fafc; }
+/* Status colours: same meaning, lower glare. */
+html.dark .bg-red-50, html.dark .bg-red-100 { background-color: rgb(127 29 29 / 0.35); }
+html.dark .text-red-700, html.dark .text-red-800 { color: #fca5a5; }
+html.dark .border-red-200 { border-color: rgb(127 29 29 / 0.6); }
+html.dark .bg-amber-50, html.dark .bg-amber-100 { background-color: rgb(120 53 15 / 0.35); }
+html.dark .text-amber-700, html.dark .text-amber-800, html.dark .text-amber-900 { color: #fcd34d; }
+html.dark .bg-emerald-50, html.dark .bg-emerald-100 { background-color: rgb(6 78 59 / 0.4); }
+html.dark .text-emerald-700, html.dark .text-emerald-800, html.dark .text-emerald-900 { color: #6ee7b7; }
+html.dark .border-emerald-200 { border-color: rgb(6 95 70 / 0.6); }
+html.dark .bg-sky-100 { background-color: rgb(12 74 110 / 0.45); }
+html.dark .text-sky-800 { color: #7dd3fc; }
+/* Form controls. */
+html.dark input:not([type='checkbox']):not([type='radio']), html.dark select, html.dark textarea {
+  background-color: #0f172a;
+  color: #e2e8f0;
+}
+html.dark input::placeholder, html.dark textarea::placeholder { color: #64748b; }
