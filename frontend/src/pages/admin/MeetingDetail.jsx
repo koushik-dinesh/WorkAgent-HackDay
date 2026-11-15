@@ -1,3 +1,4 @@
+import { CalendarDays, FileText, Users } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { getMeeting, getTranscript, updateMeeting } from '../../api/meetings.js';
@@ -6,7 +7,8 @@ import { MeetingForm } from '../../components/MeetingForm.jsx';
 import { RelatedRecords } from '../../components/RelatedRecords.jsx';
 import { TranscriptUpload } from '../../components/TranscriptUpload.jsx';
 import { TranscriptViewer } from '../../components/TranscriptViewer.jsx';
-import { Button, Card, ErrorAlert, Loading, StatusBadge, SuccessAlert } from '../../components/ui.jsx';
+import { MeetingStatusBadge } from '../../components/MeetingStatus.jsx';
+import { BackLink as UiBackLink, Button, Card, ErrorAlert, Loading, PageHeader, SuccessAlert, UserAvatar } from '../../components/ui.jsx';
 import { formatDateTime } from '../../utils/format.js';
 import { MeetingEmails } from './MeetingEmails.jsx';
 import { ReviewActionItems } from './ReviewActionItems.jsx';
@@ -109,13 +111,29 @@ export function MeetingDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <BackLink />
-        <div className="mt-1 flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold">{meeting.title}</h1>
-          <StatusBadge status={meeting.status} />
-        </div>
-      </div>
+      <PageHeader
+        back={{ to: '/admin/meetings', label: 'Meetings' }}
+        title={meeting.title}
+        badge={<MeetingStatusBadge status={meeting.status} />}
+        meta={
+          <>
+            <span className="inline-flex items-center gap-1.5">
+              <CalendarDays size={13} aria-hidden="true" />
+              {formatDateTime(meeting.scheduledAt)}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Users size={13} aria-hidden="true" />
+              {meeting.participants.length} participant{meeting.participants.length === 1 ? '' : 's'}
+            </span>
+            {meeting.transcript && (
+              <span className="inline-flex items-center gap-1.5">
+                <FileText size={13} aria-hidden="true" />
+                {meeting.transcript.segmentCount} transcript segments
+              </span>
+            )}
+          </>
+        }
+      />
       <SuccessAlert>{notice}</SuccessAlert>
 
       <Card
@@ -133,7 +151,7 @@ export function MeetingDetailPage() {
         ) : (
           <dl className="grid gap-4 text-sm sm:grid-cols-2">
             <Detail label="Meeting link">
-              <a href={meeting.meetingUrl} target="_blank" rel="noopener noreferrer" className="break-all text-slate-900 underline">
+              <a href={meeting.meetingUrl} target="_blank" rel="noopener noreferrer" className="break-all text-accent-700 underline-offset-2 hover:underline">
                 {meeting.meetingUrl}
               </a>
             </Detail>
@@ -141,7 +159,7 @@ export function MeetingDetailPage() {
             <Detail label="Language">{meeting.languageHint ?? 'Auto-detect'}</Detail>
             <Detail label="Project">
               {meeting.project ? (
-                <Link to={`/projects/${meeting.project.id}`} className="text-slate-900 underline">
+                <Link to={`/projects/${meeting.project.id}`} className="text-accent-700 underline-offset-2 hover:underline">
                   {meeting.project.name}
                 </Link>
               ) : (
@@ -156,9 +174,12 @@ export function MeetingDetailPage() {
               ) : (
                 <ul className="flex flex-wrap gap-2">
                   {meeting.participants.map((p) => (
-                    <li key={p.id} className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
-                      {p.fullName}
-                      {!p.isActive && ' (inactive)'}
+                    <li key={p.id} className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white py-0.5 pl-0.5 pr-2.5 text-xs text-slate-700">
+                      <UserAvatar name={p.fullName} size={18} />
+                      <span>
+                        {p.fullName}
+                        {!p.isActive && ' (inactive)'}
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -245,17 +266,13 @@ export function MeetingDetailPage() {
 }
 
 function BackLink() {
-  return (
-    <Link to="/admin/meetings" className="text-sm text-slate-500 hover:underline">
-      ← Meetings
-    </Link>
-  );
+  return <UiBackLink to="/admin/meetings">Meetings</UiBackLink>;
 }
 
 function Detail({ label, wide, children }) {
   return (
     <div className={wide ? 'sm:col-span-2' : ''}>
-      <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</dt>
+      <dt className="text-xs font-medium text-slate-500">{label}</dt>
       <dd className="mt-1 text-slate-900">{children}</dd>
     </div>
   );

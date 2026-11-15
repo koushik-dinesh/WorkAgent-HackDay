@@ -1,3 +1,4 @@
+import { Loader2 } from 'lucide-react';
 import { Navigate, Outlet, useLocation } from 'react-router';
 import { homePathFor, useAuth } from './AuthContext.jsx';
 
@@ -7,7 +8,12 @@ export function ProtectedRoute({ roles }) {
   const location = useLocation();
 
   if (loading) {
-    return <div className="flex min-h-screen items-center justify-center text-slate-500">Loading…</div>;
+    return (
+      <div className="flex min-h-screen items-center justify-center gap-2 text-sm text-slate-500">
+        <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+        Loading…
+      </div>
+    );
   }
   if (!user) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;

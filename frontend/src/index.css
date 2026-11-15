@@ -4,61 +4,261 @@
    so people can choose. */
 @custom-variant dark (&:where(.dark, .dark *));
 
-:root {
-  --wa-bg: #f8fafc;
-  --wa-fg: #0f172a;
-}
-body {
-  background: var(--wa-bg);
-  color: var(--wa-fg);
+/* ------------------------------------------------------------------------------------------------
+   WorkAgent design tokens (docs/UI_UX_REDESIGN_AUDIT.md §3).
+
+   Every colour in the app comes from here. Tailwind's `slate` scale is the neutral scale, the
+   status scales (red, amber, emerald, sky, violet, rose) carry meaning, and `accent` is the one
+   brand colour. Dark mode re-points the same variables (see `html.dark` below), so a utility such
+   as `bg-slate-100` or `text-amber-800` is correct in both themes without a `dark:` variant.
+   ------------------------------------------------------------------------------------------------ */
+@theme {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Neutrals: warm off-white surfaces, charcoal text. */
+  --color-slate-50: #f7f7f4;
+  --color-slate-100: #f0efeb;
+  --color-slate-200: #e6e5e0;
+  --color-slate-300: #d5d4cd;
+  --color-slate-400: #a09f98;
+  --color-slate-500: #71706a;
+  --color-slate-600: #56554f;
+  --color-slate-700: #403f3a;
+  --color-slate-800: #292825;
+  --color-slate-900: #1c1b19;
+  --color-slate-950: #121110;
+
+  /* Accent: one restrained indigo. */
+  --color-accent-50: #f2f2fe;
+  --color-accent-100: #e5e6fc;
+  --color-accent-200: #cfd1fa;
+  --color-accent-300: #adb0f5;
+  --color-accent-400: #8689ee;
+  --color-accent-500: #6567e6;
+  --color-accent-600: #4f4fdc;
+  --color-accent-700: #4240c0;
+  --color-accent-800: #36359a;
+  --color-accent-900: #2f2f78;
+
+  /* Semantic surfaces and lines (bg-canvas, bg-surface, bg-sidebar, border-line …). */
+  --color-canvas: #fafaf8;
+  --color-surface: #ffffff;
+  --color-raised: #ffffff;
+  --color-sidebar: #f4f4f1;
+  --color-line: #e7e6e1;
+  --color-line-strong: #d5d4cd;
+  --color-primary: #4f4fdc;
+  --color-primary-hover: #4240c0;
+  --color-on-primary: #ffffff;
+
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.625rem;
+  --radius-2xl: 0.875rem;
+
+  --shadow-xs: 0 1px 0 0 rgb(18 17 16 / 0.03);
+  --shadow-pop: 0 0 0 1px rgb(18 17 16 / 0.06), 0 8px 24px -6px rgb(18 17 16 / 0.14), 0 2px 6px -2px rgb(18 17 16 / 0.08);
+
+  --animate-pop: wa-pop 140ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-fade: wa-fade 160ms ease-out;
+  --animate-slide-in: wa-slide-in 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-shimmer: wa-shimmer 1.4s linear infinite;
+  --animate-blink: wa-blink 1.2s ease-in-out infinite;
+
+  @keyframes wa-pop {
+    from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes wa-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes wa-slide-in {
+    from { transform: translateX(-100%); }
+    to { transform: none; }
+  }
+  @keyframes wa-shimmer {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+  }
+  @keyframes wa-blink {
+    0%, 80%, 100% { opacity: 0.25; }
+    40% { opacity: 1; }
+  }
 }
 
-/* Dark theme for the whole app. The pages use a small set of slate utilities (white cards, slate
-   text and borders); these unlayered rules re-map exactly those in dark mode, so every existing
-   page gets a consistent dark theme without per-page changes. New components may also use
-   `dark:` variants directly. */
+:root {
+  color-scheme: light;
+  --wa-focus: #6567e6;
+}
+
+/* Dark theme: layered charcoal surfaces, the same accent, status colours as translucent tints. */
 html.dark {
-  --wa-bg: #0b1220;
-  --wa-fg: #e2e8f0;
-  --wa-surface: #111827;
-  --wa-surface-2: #1e293b;
-  --wa-border: #334155;
-  --wa-border-soft: #1f2a3b;
-  --wa-muted: #94a3b8;
+  color-scheme: dark;
+  --wa-focus: #8689ee;
+
+  --color-slate-50: #1c1d21;
+  --color-slate-100: #24262b;
+  --color-slate-200: #2a2c32;
+  --color-slate-300: #393c44;
+  --color-slate-400: #6c6f79;
+  --color-slate-500: #8d909a;
+  --color-slate-600: #a8abb4;
+  --color-slate-700: #c4c6cd;
+  --color-slate-800: #dfe0e5;
+  --color-slate-900: #f0f0f3;
+  --color-slate-950: #fafafa;
+
+  --color-accent-50: rgb(101 103 230 / 0.12);
+  --color-accent-100: rgb(101 103 230 / 0.2);
+  --color-accent-200: rgb(101 103 230 / 0.34);
+  --color-accent-700: #a9acf6;
+  --color-accent-800: #c0c2f9;
+  --color-accent-900: #d6d7fb;
+
+  --color-canvas: #111214;
+  --color-surface: #17181b;
+  --color-raised: #1f2125;
+  --color-sidebar: #0d0e10;
+  --color-line: #26282d;
+  --color-line-strong: #393c44;
+  --color-primary: #5b5be0;
+  --color-primary-hover: #6d6fe8;
+
+  --color-red-50: rgb(239 68 68 / 0.1);
+  --color-red-100: rgb(239 68 68 / 0.17);
+  --color-red-200: rgb(239 68 68 / 0.32);
+  --color-red-700: #f8a3a3;
+  --color-red-800: #fbb9b9;
+  --color-red-900: #fdd0d0;
+
+  --color-rose-100: rgb(244 63 94 / 0.17);
+  --color-rose-700: #fda4b4;
+
+  --color-amber-50: rgb(245 158 11 / 0.1);
+  --color-amber-100: rgb(245 158 11 / 0.17);
+  --color-amber-200: rgb(245 158 11 / 0.32);
+  --color-amber-300: rgb(245 158 11 / 0.5);
+  --color-amber-700: #f5c35b;
+  --color-amber-800: #f8cf7a;
+  --color-amber-900: #fbdc9c;
+
+  --color-emerald-50: rgb(16 185 129 / 0.1);
+  --color-emerald-100: rgb(16 185 129 / 0.17);
+  --color-emerald-200: rgb(16 185 129 / 0.32);
+  --color-emerald-700: #6fdcb1;
+  --color-emerald-800: #86e3bf;
+  --color-emerald-900: #a7ecd1;
+
+  --color-sky-50: rgb(14 165 233 / 0.1);
+  --color-sky-100: rgb(14 165 233 / 0.17);
+  --color-sky-200: rgb(14 165 233 / 0.32);
+  --color-sky-700: #7ccdf5;
+  --color-sky-800: #93d6f7;
+  --color-sky-900: #b3e2fa;
+
+  --color-violet-50: rgb(139 92 246 / 0.12);
+  --color-violet-100: rgb(139 92 246 / 0.2);
+  --color-violet-300: rgb(139 92 246 / 0.45);
+  --color-violet-700: #c3aefb;
+  --color-violet-800: #cfbffc;
+  --color-violet-900: #ddd2fd;
+
+  --color-teal-700: #6fd6cb;
+
+  --shadow-xs: 0 1px 0 0 rgb(0 0 0 / 0.2);
+  --shadow-pop: 0 0 0 1px rgb(255 255 255 / 0.07), 0 12px 32px -8px rgb(0 0 0 / 0.6), 0 2px 8px -2px rgb(0 0 0 / 0.4);
 }
-html.dark .bg-white { background-color: var(--wa-surface); }
-html.dark .bg-slate-50 { background-color: #0f172a; }
-html.dark .bg-slate-100 { background-color: var(--wa-surface-2); }
-html.dark .bg-slate-200 { background-color: #273449; }
-html.dark .hover\:bg-slate-50:hover { background-color: #172033; }
-html.dark .hover\:bg-slate-100:hover { background-color: #1e293b; }
-html.dark .text-slate-900, html.dark .text-slate-800 { color: #e2e8f0; }
-html.dark .text-slate-700 { color: #cbd5e1; }
-html.dark .text-slate-600 { color: #a5b4c8; }
-html.dark .text-slate-500, html.dark .text-slate-400 { color: var(--wa-muted); }
-html.dark .hover\:text-slate-900:hover { color: #f8fafc; }
-html.dark .border-slate-100, html.dark .border-slate-200 { border-color: var(--wa-border-soft); }
-html.dark .border-slate-300 { border-color: var(--wa-border); }
-html.dark .divide-slate-100 > :not(:last-child), html.dark .divide-slate-200 > :not(:last-child) { border-color: var(--wa-border-soft); }
-html.dark .border-slate-900 { border-color: #cbd5e1; }
-/* Primary buttons and the user's chat bubbles invert. */
-html.dark .bg-slate-900 { background-color: #e2e8f0; color: #0f172a; }
-html.dark .bg-slate-900.text-white, html.dark .bg-slate-900 .text-white { color: #0f172a; }
-html.dark .hover\:bg-slate-800:hover { background-color: #f8fafc; }
-/* Status colours: same meaning, lower glare. */
-html.dark .bg-red-50, html.dark .bg-red-100 { background-color: rgb(127 29 29 / 0.35); }
-html.dark .text-red-700, html.dark .text-red-800 { color: #fca5a5; }
-html.dark .border-red-200 { border-color: rgb(127 29 29 / 0.6); }
-html.dark .bg-amber-50, html.dark .bg-amber-100 { background-color: rgb(120 53 15 / 0.35); }
-html.dark .text-amber-700, html.dark .text-amber-800, html.dark .text-amber-900 { color: #fcd34d; }
-html.dark .bg-emerald-50, html.dark .bg-emerald-100 { background-color: rgb(6 78 59 / 0.4); }
-html.dark .text-emerald-700, html.dark .text-emerald-800, html.dark .text-emerald-900 { color: #6ee7b7; }
-html.dark .border-emerald-200 { border-color: rgb(6 95 70 / 0.6); }
-html.dark .bg-sky-100 { background-color: rgb(12 74 110 / 0.45); }
-html.dark .text-sky-800 { color: #7dd3fc; }
-/* Form controls. */
-html.dark input:not([type='checkbox']):not([type='radio']), html.dark select, html.dark textarea {
-  background-color: #0f172a;
-  color: #e2e8f0;
+/* White is the card surface; in the dark theme it is the first surface layer. */
+html.dark .bg-white { background-color: var(--color-surface); }
+html.dark .hover\:bg-white:hover { background-color: var(--color-surface); }
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    font-feature-settings: 'cv11', 'ss01', 'calt';
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--color-canvas);
+    color: var(--color-slate-900);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: var(--color-accent-200);
+  }
+
+  /* One focus treatment for every interactive element. */
+  :where(a, button, summary, [role='tab'], [role='menuitem'], [role='option'], [tabindex]):focus-visible {
+    outline: 2px solid var(--wa-focus);
+    outline-offset: 2px;
+    border-radius: var(--radius-md);
+  }
+  :where(input, select, textarea):focus-visible {
+    outline: 2px solid var(--wa-focus);
+    outline-offset: -1px;
+  }
+
+  /* Form controls take the surface colour in both themes. */
+  :where(input:not([type='checkbox'], [type='radio'], [type='range'], [type='file']), select, textarea) {
+    background-color: var(--color-surface);
+    color: var(--color-slate-900);
+  }
+  :where(input, textarea)::placeholder {
+    color: var(--color-slate-400);
+    opacity: 1;
+  }
+  :where(input[type='checkbox'], input[type='radio']) {
+    accent-color: var(--color-primary);
+    width: 0.9375rem;
+    height: 0.9375rem;
+    flex-shrink: 0;
+  }
+  :where(button, [role='button'], summary, select, label:has(input[type='checkbox'], input[type='radio'])) {
+    cursor: pointer;
+  }
+  :where(button:disabled, select:disabled) {
+    cursor: not-allowed;
+  }
+  :where(code, kbd) {
+    font-family: var(--font-mono);
+    font-size: 0.92em;
+  }
+  :where(code) {
+    border-radius: 0.25rem;
+    background: var(--color-slate-100);
+    padding: 0.05rem 0.3rem;
+  }
+  :where(summary) {
+    color: var(--color-slate-600);
+  }
+  :where(summary):hover {
+    color: var(--color-slate-900);
+  }
+  /* Thin, quiet scrollbars. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-slate-300) transparent;
+  }
 }
-html.dark input::placeholder, html.dark textarea::placeholder { color: #64748b; }
+
+/* Skeleton shimmer used by <Skeleton> and <Loading>. */
+@utility skeleton {
+  border-radius: var(--radius-md);
+  background: linear-gradient(90deg, var(--color-slate-100) 25%, var(--color-slate-200) 37%, var(--color-slate-100) 63%);
+  background-size: 400% 100%;
+  animation: var(--animate-shimmer);
+}
+
+/* Respect "reduce motion": no transitions, no entrance animations, no shimmer. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

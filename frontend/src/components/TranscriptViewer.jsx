@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { formatTimestamp } from '../utils/format.js';
-import { inputClass } from './ui.jsx';
+import { SearchInput } from './ui.jsx';
 
 const SPEAKER_COLORS = [
   'text-sky-700',
@@ -39,21 +39,17 @@ export function TranscriptViewer({ segments, highlight }) {
 
   return (
     <div className="space-y-3">
-      <input
-        type="search"
-        value={filter}
-        onChange={(e) => setFilter(e.target.value)}
-        placeholder="Search transcript…"
-        aria-label="Search transcript"
-        className={`${inputClass} max-w-xs`}
-      />
-      <ol className="max-h-[32rem] divide-y divide-slate-100 overflow-y-auto rounded-md border border-slate-200">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <SearchInput className="w-full max-w-xs" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Search transcript…" aria-label="Search transcript" />
+        {needle && <span className="text-xs text-slate-500">{visible.length} of {segments.length} segments</span>}
+      </div>
+      <ol className="max-h-[32rem] divide-y divide-slate-100 overflow-y-auto rounded-lg border border-slate-200">
         {visible.map((s) => (
           <li
             key={s.id}
             id={`segment-${s.id}`}
             tabIndex={-1}
-            className={`grid grid-cols-[4rem_1fr] gap-3 px-3 py-2 text-sm focus:outline-none ${highlight?.segmentId === s.id ? 'bg-amber-50 ring-1 ring-inset ring-amber-300' : ''}`}
+            className={`grid grid-cols-[3.25rem_1fr] gap-3 px-3.5 py-2.5 text-sm transition-colors duration-150 focus:outline-none ${highlight?.segmentId === s.id ? 'bg-amber-50 ring-1 ring-inset ring-amber-300' : 'hover:bg-slate-50'}`}
           >
             <span className="pt-0.5 font-mono text-xs text-slate-400">{formatTimestamp(s.startSec) || '—'}</span>
             <div className="min-w-0">
@@ -61,7 +57,7 @@ export function TranscriptViewer({ segments, highlight }) {
                 {s.speaker ?? 'Unknown speaker'}
               </span>
               {s.language && <span className="ml-2 rounded bg-slate-100 px-1 text-[10px] uppercase text-slate-500">{s.language}</span>}
-              <p className="whitespace-pre-wrap break-words text-slate-800">{s.text}</p>
+              <p className="mt-0.5 whitespace-pre-wrap break-words leading-6 text-slate-800">{s.text}</p>
             </div>
           </li>
         ))}

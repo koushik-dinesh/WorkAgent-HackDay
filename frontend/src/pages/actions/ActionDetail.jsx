@@ -1,37 +1,45 @@
 // One action item with its complete evidence trail: where it was said or written (transcript
 // line, Teams message, Jira/GitHub/Figma comment), supporting evidence from other sources, the
 // real state of the linked work, every execution in connected applications, and the audit history.
+import { CalendarDays, ExternalLink, Flag, Gauge, Play, RotateCcw, UserRound } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { editAction, getAction, retryExecution, reviewAction, setActionStatus } from '../../api/actions.js';
 import { listPeople } from '../../api/directory.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { ExecutePanel } from '../../components/actions/ExecutePanel.jsx';
-import { CATEGORIES, EXECUTION_STATUS, LifecycleBadge, OWNER_KIND, WORK_STATUS } from '../../components/actions/labels.jsx';
-import { Button, Card, ErrorAlert, Field, Loading, SuccessAlert, inputClass } from '../../components/ui.jsx';
-import { formatDateTime, formatTimestamp } from '../../utils/format.js';
+import { CATEGORIES, EXECUTION_STATUS, LifecycleBadge, OWNER_KIND, PriorityIndicator, WORK_STATUS } from '../../components/actions/labels.jsx';
+import { SourceIcon } from '../../components/icons.jsx';
+import { ActivityTimeline, Badge, Button, Card, ErrorAlert, Field, Loading, Meter, PageHeader, Person, SuccessAlert, inputClass } from '../../components/ui.jsx';
+import { formatDate, formatDateTime, formatTimestamp } from '../../utils/format.js';
 
 const RELATION = { origin: 'Where it was agreed', supporting: 'Also mentioned', progress: 'Progress', completion: 'Completion evidence' };
 const PROVIDER = { microsoft_teams: 'Teams', jira: 'Jira', github: 'GitHub', figma: 'Figma', outlook: 'Outlook', google_calendar: 'Google Calendar' };
 const BLOCKING_INFO = ['missing_deadline', 'merged_duplicates', 'team_owner', 'ambiguous_team', 'merged_sources', 'completion_evidence', 'blocker_reported'];
 
+const RELATION_TONE = { origin: 'accent', supporting: 'neutral', progress: 'info', completion: 'success' };
+const EXECUTION_TONE = { awaiting_approval: 'warning', scheduled: 'info', executing: 'info', succeeded: 'success', verified: 'success', failed: 'danger', retry_required: 'danger', cancelled: 'muted', rejected: 'muted' };
+const WORK_TONE = { not_started: 'neutral', in_progress: 'info', implementation_complete: 'warning', blocked: 'danger', done: 'success' };
+const linkClass = 'font-medium text-accent-700 underline-offset-2 hover:underline';
+
 function EvidenceItem({ e }) {
   return (
-    <li className="rounded-md border border-slate-200 p-3 text-sm">
+    <li className="rounded-lg border border-slate-200 p-3.5 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-        <span className="font-medium uppercase tracking-wide">{RELATION[e.relation] ?? e.relation}</span>
-        <span>
+        <Badge tone={RELATION_TONE[e.relation] ?? 'neutral'}>{RELATION[e.relation] ?? e.relation}</Badge>
+        <span className="inline-flex items-center gap-1.5">
+          <SourceIcon source={e.record?.provider ?? 'meeting'} size={13} />
           {e.record ? `${PROVIDER[e.record.provider] ?? e.record.provider} ${e.record.recordType.replaceAll('_', ' ')}${e.record.key ? ` ${e.record.key}` : ''}` : e.meeting ? `Transcript of “${e.meeting.title}”${e.startSec !== null ? ` at ${formatTimestamp(e.startSec)}` : ''}` : 'Transcript'}
           {e.occurredAt ? ` · ${formatDateTime(e.occurredAt)}` : ''}
         </span>
       </div>
-      <blockquote className="mt-1 border-l-2 border-slate-300 pl-3 text-slate-800">
+      <blockquote className="mt-2.5 border-l-2 border-accent-300 pl-3 text-slate-800">
         “{e.excerpt}”{e.speaker && <span className="text-slate-500"> — {e.speaker}</span>}
       </blockquote>
-      <div className="mt-1 flex gap-3 text-xs">
-        {e.record && <Link className="underline" to={`/records/${e.record.id}`}>Open in WorkAgent</Link>}
-        {e.record?.url && <a className="underline" href={e.record.url} target="_blank" rel="noreferrer">Open the original</a>}
-        {e.meeting && <Link className="underline" to={`/admin/meetings/${e.meeting.id}`}>Open the meeting</Link>}
+      <div className="mt-2.5 flex flex-wrap gap-4 text-xs">
+        {e.record && <Link className={linkClass} to={`/records/${e.record.id}`}>Open in WorkAgent</Link>}
+        {e.record?.url && <a className={linkClass} href={e.record.url} target="_blank" rel="noreferrer">Open the original</a>}
+        {e.meeting && <Link className={linkClass} to={`/admin/meetings/${e.meeting.id}`}>Open the meeting</Link>}
       </div>
     </li>
   );
@@ -98,7 +106,7 @@ function ReviewForm({ item, problems, onSaved }) {
       {openFlags.length > 0 && (
         <ul className="space-y-1 text-sm">
           {openFlags.map((f) => (
-            <li key={f} className="flex items-center justify-between gap-2 rounded-md bg-amber-50 px-2 py-1 text-amber-900">
+            <li key={f} className="flex items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-amber-900">
               {item.flagLabels?.[f] ?? f.replaceAll('_', ' ')}
               <Button variant="link" disabled={busy} onClick={() => save({ resolveFlags: [f] })}>
                 Mark resolved
@@ -108,7 +116,7 @@ function ReviewForm({ item, problems, onSaved }) {
         </ul>
       )}
       {problems.length > 0 && <p className="text-xs text-slate-500">Before approval: {problems.join('; ')}</p>}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-4">
         <Button variant="secondary" disabled={busy} onClick={() => save()}>
           Save changes
         </Button>
@@ -172,72 +180,96 @@ export function ActionDetailPage() {
     }
   }
 
+  const owner = i.assignee?.fullName ?? i.assigneeTeam?.name;
   return (
-    <div className="space-y-5">
-      <Link to="/actions" className="text-sm text-slate-500 hover:underline">
-        ← Action Center
-      </Link>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">{i.title}</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            {[i.categoryLabel, i.sourceLabel, i.project?.name, i.meeting ? `Meeting “${i.meeting.title}”` : null].filter(Boolean).join(' · ')}
-          </p>
-        </div>
-        <LifecycleBadge state={i.lifecycle} />
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        back={{ to: '/actions', label: 'Action Center' }}
+        title={i.title}
+        badge={<LifecycleBadge state={i.lifecycle} />}
+        meta={
+          <>
+            {i.categoryLabel && <span>{i.categoryLabel}</span>}
+            <span className="inline-flex items-center gap-1.5">
+              <SourceIcon source={i.source} size={13} />
+              {i.sourceLabel}
+            </span>
+            {i.project?.name && <Link to={`/projects/${i.project.id}`} className="hover:text-slate-900 hover:underline">{i.project.name}</Link>}
+            {i.meeting && <span>Meeting “{i.meeting.title}”</span>}
+          </>
+        }
+        actions={
+          d.permissions.canReview && i.reviewStatus !== 'pending' && (
+            <Button variant="secondary" icon={RotateCcw} onClick={() => act(() => reviewAction(i.id, 'reopen'), 'Reopened for review.')}>
+              Reopen review
+            </Button>
+          )
+        }
+      />
       <ErrorAlert error={error} />
       <SuccessAlert>{notice}</SuccessAlert>
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_20rem]">
-        <div className="space-y-5">
-          {i.description && <p className="whitespace-pre-wrap text-sm text-slate-700">{i.description}</p>}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_19rem]">
+        <div className="min-w-0 space-y-6">
+          {i.description && <p className="max-w-3xl whitespace-pre-wrap text-sm leading-6 text-slate-700">{i.description}</p>}
 
           {d.permissions.canReview && i.reviewStatus === 'pending' && (
-            <Card title="Review">
+            <Card title="Review" description="Confirm the owner, deadline and wording before this becomes a task.">
               <ReviewForm item={i} problems={d.permissions.approvalProblems} onSaved={async (m) => { if (m) setNotice(m); await load(); }} />
             </Card>
           )}
 
-          <Card title={`Evidence (${d.evidence.length})`}>
-            {d.evidence.length === 0 ? <p className="text-sm text-slate-500">Added manually; no source evidence.</p> : <ul className="space-y-2">{d.evidence.map((e) => <EvidenceItem key={e.id} e={e} />)}</ul>}
+          <Card title={`Evidence (${d.evidence.length})`} description="Where this was said or written, and what supports it.">
+            {d.evidence.length === 0 ? <p className="text-sm text-slate-500">Added manually; no source evidence.</p> : <ul className="space-y-3">{d.evidence.map((e) => <EvidenceItem key={e.id} e={e} />)}</ul>}
           </Card>
 
-          <Card title="Actual state of the work">
-            <p className="text-sm font-medium">{WORK_STATUS[d.workStatus.status] ?? d.workStatus.status}</p>
+          <Card title="Actual state of the work" actions={<Badge tone={WORK_TONE[d.workStatus.status] ?? 'neutral'} dot>{WORK_STATUS[d.workStatus.status] ?? d.workStatus.status}</Badge>}>
             {d.workStatus.signals.length ? (
-              <ul className="mt-2 space-y-1 text-sm">
+              <ul className="space-y-2 text-sm">
                 {d.workStatus.signals.map((s) => (
-                  <li key={s.recordId}>
-                    {s.text}
-                    {s.linkStatus === 'suggested' && <span className="ml-1 text-xs text-slate-500">(suggested link)</span>}
-                    {' · '}
-                    <Link className="underline" to={`/records/${s.recordId}`}>open</Link>
+                  <li key={s.recordId} className="flex flex-wrap items-baseline gap-x-2">
+                    <span className="text-slate-800">{s.text}</span>
+                    {s.linkStatus === 'suggested' && <span className="text-xs text-slate-500">(suggested link)</span>}
+                    <span aria-hidden="true" className="text-slate-300">·</span>
+                    <Link className={`text-xs ${linkClass}`} to={`/records/${s.recordId}`}>open</Link>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="mt-1 text-sm text-slate-500">No Jira issue, pull request, commit or design is linked yet. Links appear when a key or URL is mentioned, when someone confirms a suggestion, or when WorkAgent creates the issue.</p>
+              <p className="text-sm text-slate-500">No Jira issue, pull request, commit or design is linked yet. Links appear when a key or URL is mentioned, when someone confirms a suggestion, or when WorkAgent creates the issue.</p>
             )}
           </Card>
 
-          <Card title="Executions in connected applications">
+          <Card
+            title="Executions in connected applications"
+            actions={
+              d.permissions.canExecute && !acting && (
+                <Button variant="secondary" size="sm" icon={Play} onClick={() => setActing(true)}>
+                  Act on this item…
+                </Button>
+              )
+            }
+          >
             {d.executions.length === 0 ? (
               <p className="text-sm text-slate-500">Nothing has been executed for this item.</p>
             ) : (
-              <ul className="divide-y divide-slate-100 text-sm">
+              <ul className="-my-2 divide-y divide-slate-100 text-sm">
                 {d.executions.map((x) => (
-                  <li key={x.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                    <div>
-                      <span className="font-medium">{x.kind.replace('.', ' · ').replaceAll('_', ' ')}</span>
+                  <li key={x.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
+                    <div className="min-w-0">
+                      <span className="inline-flex items-center gap-2">
+                        <SourceIcon source={x.kind.split('.')[0]} size={14} />
+                        <span className="font-medium">{x.kind.replace('.', ' · ').replaceAll('_', ' ')}</span>
+                      </span>
                       <span className="ml-2 text-xs text-slate-500">{EXECUTION_STATUS[x.status] ?? x.status}{x.approvedBy ? ` · approved by ${x.approvedBy}` : ''}</span>
-                      {x.lastError && <p className="text-xs text-red-700">{x.lastError}</p>}
+                      {x.lastError && <p className="mt-0.5 text-xs text-red-700">{x.lastError}</p>}
                     </div>
                     <div className="flex items-center gap-3 text-xs">
-                      {x.externalUrl && (x.externalUrl.startsWith('/') ? <Link className="underline" to={x.externalUrl}>{x.externalKey ?? 'Open'}</Link> : <a className="underline" href={x.externalUrl} target="_blank" rel="noreferrer">{x.externalKey ?? 'Open'}</a>)}
+                      <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${{ success: 'bg-emerald-500', danger: 'bg-red-500', info: 'bg-sky-500', warning: 'bg-amber-500' }[EXECUTION_TONE[x.status]] ?? 'bg-slate-300'}`} />
+                      {x.externalUrl && (x.externalUrl.startsWith('/') ? <Link className={linkClass} to={x.externalUrl}>{x.externalKey ?? 'Open'}</Link> : <a className={`inline-flex items-center gap-1 ${linkClass}`} href={x.externalUrl} target="_blank" rel="noreferrer">{x.externalKey ?? 'Open'}<ExternalLink size={11} aria-hidden="true" /></a>)}
                       {!x.externalUrl && x.externalKey && <span>{x.externalKey}</span>}
                       {['failed', 'retry_required'].includes(x.status) && (
-                        <Button variant="secondary" onClick={() => act(() => retryExecution(x.id), 'Retry scheduled.')}>
+                        <Button variant="secondary" size="sm" icon={RotateCcw} onClick={() => act(() => retryExecution(x.id), 'Retry scheduled.')}>
                           Retry
                         </Button>
                       )}
@@ -246,59 +278,74 @@ export function ActionDetailPage() {
                 ))}
               </ul>
             )}
-            {d.permissions.canExecute && !acting && (
-              <Button className="mt-3" variant="secondary" onClick={() => setActing(true)}>
-                Act on this item…
-              </Button>
-            )}
-            {acting && <div className="mt-3"><ExecutePanel itemIds={[i.id]} onClose={() => setActing(false)} onDone={() => load()} /></div>}
+            {acting && <div className="mt-4"><ExecutePanel itemIds={[i.id]} onClose={() => setActing(false)} onDone={() => load()} /></div>}
           </Card>
 
           <Card title="History">
-            <ol className="space-y-1 text-sm">
-              {d.history.map((h) => (
-                <li key={h.id} className="flex flex-wrap justify-between gap-2">
-                  <span>
-                    <span className="font-medium">{h.action.replaceAll('_', ' ').replace('.', ': ')}</span>
-                    <span className="text-slate-500"> — {h.actor}</span>
-                  </span>
-                  <span className="text-xs text-slate-500">{formatDateTime(h.at)}</span>
-                </li>
-              ))}
-            </ol>
+            <ActivityTimeline
+              items={d.history.map((h) => ({
+                key: h.id,
+                title: <span className="font-medium">{h.action.replaceAll('_', ' ').replace('.', ': ')}</span>,
+                detail: `— ${h.actor}`,
+                at: formatDateTime(h.at),
+                tone: /fail|reject/.test(h.action) ? 'danger' : /approv|verified|complet/.test(h.action) ? 'success' : 'neutral',
+              }))}
+            />
           </Card>
         </div>
 
         <aside className="space-y-4">
           <Card title="Details">
-            <dl className="space-y-2 text-sm">
-              <div><dt className="text-xs text-slate-500">Owner</dt><dd>{i.assignee?.fullName ?? i.assigneeTeam?.name ?? 'Unassigned'} <span className="text-xs text-slate-500">({OWNER_KIND[i.assigneeKind]})</span></dd></div>
-              <div><dt className="text-xs text-slate-500">Due</dt><dd className={i.overdue ? 'font-medium text-red-700' : ''}>{i.dueDate ?? (i.dueDateRaw ? `“${i.dueDateRaw}” (not resolved)` : 'No deadline')}{i.dueTimezone ? <span className="text-xs text-slate-500"> {i.dueTimezone}</span> : ''}</dd></div>
-              <div><dt className="text-xs text-slate-500">Priority</dt><dd className="capitalize">{i.priority}</dd></div>
-              <div><dt className="text-xs text-slate-500">Work status</dt><dd>{i.taskStatus.replaceAll('_', ' ')}</dd></div>
-              {i.aiConfidence !== null && <div><dt className="text-xs text-slate-500">AI confidence</dt><dd>{Math.round(i.aiConfidence * 100)}%</dd></div>}
-              {i.sourceRecord?.url && <div><dt className="text-xs text-slate-500">Source</dt><dd><a className="underline" href={i.sourceRecord.url} target="_blank" rel="noreferrer">{i.sourceRecord.key ?? i.sourceLabel}</a></dd></div>}
+            <dl className="space-y-3.5 text-sm">
+              <div>
+                <dt className="flex items-center gap-1.5 text-xs text-slate-500"><UserRound size={12} aria-hidden="true" />Owner</dt>
+                <dd className="mt-1">
+                  {owner ? <Person name={owner} /> : 'Unassigned'} <span className="text-xs text-slate-500">({OWNER_KIND[i.assigneeKind]})</span>
+                </dd>
+              </div>
+              <div>
+                <dt className="flex items-center gap-1.5 text-xs text-slate-500"><CalendarDays size={12} aria-hidden="true" />Due</dt>
+                <dd className={`mt-1 ${i.overdue ? 'font-medium text-red-700' : ''}`}>{i.dueDate ? <span title={i.dueDate}>{formatDate(i.dueDate)}</span> : i.dueDateRaw ? `“${i.dueDateRaw}” (not resolved)` : 'No deadline'}{i.dueTimezone ? <span className="text-xs text-slate-500"> {i.dueTimezone}</span> : ''}</dd>
+              </div>
+              <div>
+                <dt className="flex items-center gap-1.5 text-xs text-slate-500"><Flag size={12} aria-hidden="true" />Priority</dt>
+                <dd className="mt-1 flex items-center gap-1.5 capitalize"><PriorityIndicator priority={i.priority} />{i.priority}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-slate-500">Work status</dt>
+                <dd className="mt-1">{i.taskStatus.replaceAll('_', ' ')}</dd>
+              </div>
+              {i.aiConfidence !== null && (
+                <div>
+                  <dt className="flex items-center gap-1.5 text-xs text-slate-500"><Gauge size={12} aria-hidden="true" />AI confidence</dt>
+                  <dd className="mt-1">
+                    {Math.round(i.aiConfidence * 100)}%
+                    <Meter className="mt-1.5" value={Math.round(i.aiConfidence * 100)} max={100} tone={i.aiConfidence >= 0.75 ? 'success' : i.aiConfidence >= 0.5 ? 'warning' : 'danger'} label="AI confidence" />
+                  </dd>
+                </div>
+              )}
+              {i.sourceRecord?.url && (
+                <div>
+                  <dt className="text-xs text-slate-500">Source</dt>
+                  <dd className="mt-1"><a className={`inline-flex items-center gap-1 ${linkClass}`} href={i.sourceRecord.url} target="_blank" rel="noreferrer">{i.sourceRecord.key ?? i.sourceLabel}<ExternalLink size={11} aria-hidden="true" /></a></dd>
+                </div>
+              )}
             </dl>
           </Card>
           {i.reviewStatus === 'approved' && (isOwner || d.permissions.canReview) && (
             <Card title="Update status">
               <div className="flex flex-wrap gap-2">
                 {['todo', 'in_progress', 'blocked', 'done'].map((s) => (
-                  <Button key={s} variant={i.taskStatus === s ? 'primary' : 'secondary'} disabled={i.taskStatus === s} onClick={() => act(() => setActionStatus(i.id, s), 'Status updated.')}>
+                  <Button key={s} size="sm" className="capitalize" variant={i.taskStatus === s ? 'primary' : 'secondary'} disabled={i.taskStatus === s} onClick={() => act(() => setActionStatus(i.id, s), 'Status updated.')}>
                     {s.replaceAll('_', ' ')}
                   </Button>
                 ))}
               </div>
             </Card>
           )}
-          {d.permissions.canReview && i.reviewStatus !== 'pending' && (
-            <Button variant="secondary" onClick={() => act(() => reviewAction(i.id, 'reopen'), 'Reopened for review.')}>
-              Reopen review
-            </Button>
-          )}
           {i.flags.length > 0 && i.reviewStatus !== 'pending' && (
             <Card title="Signals">
-              <ul className="space-y-1 text-sm">{i.flags.map((f) => <li key={f}>{i.flagLabels?.[f] ?? f}</li>)}</ul>
+              <ul className="space-y-1.5 text-sm text-slate-700">{i.flags.map((f) => <li key={f}>{i.flagLabels?.[f] ?? f}</li>)}</ul>
             </Card>
           )}
         </aside>

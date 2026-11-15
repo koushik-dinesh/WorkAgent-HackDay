@@ -1,6 +1,7 @@
-import { InsightsPage } from '../Insights.jsx';
+import { OverviewPage } from '../Overview.jsx';
 
-// The admin home is the organisation-wide insights view (Phase 7).
+// The admin home is the organisation-wide overview: what needs attention across WorkAgent.
+// The full insights view (Phase 7) is at /insights.
 export function AdminDashboard() {
-  return <InsightsPage title="Dashboard" />;
+  return <OverviewPage />;
 }

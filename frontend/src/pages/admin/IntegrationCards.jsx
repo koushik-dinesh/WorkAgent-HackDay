@@ -1,56 +1,53 @@
 // Dashboard cards for Figma and Microsoft Teams with an honest state: Connected, Syncing, Error,
 // Disconnected, or Configuration required. The Teams card makes the DEVELOPMENT MOCK obvious.
+import { RefreshCw, Settings2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router';
 import { disconnect, startConnect, syncNow } from '../../api/integrations.js';
 import { getOverview, resetTeamsMock, syncTeamsMock } from '../../api/integrationOverview.js';
-import { Button, ErrorAlert, SuccessAlert } from '../../components/ui.jsx';
+import { IntegrationIcon } from '../../components/icons.jsx';
+import { Badge, Button, ButtonLink, ErrorAlert, MiniStat, SuccessAlert } from '../../components/ui.jsx';
 import { formatDateTime } from '../../utils/format.js';
 
 const STATE = {
-  connected: { label: 'Connected', cls: 'bg-emerald-100 text-emerald-800' },
-  syncing: { label: 'Syncing', cls: 'bg-sky-100 text-sky-800' },
-  error: { label: 'Error', cls: 'bg-red-100 text-red-700' },
-  disconnected: { label: 'Disconnected', cls: 'bg-slate-100 text-slate-600' },
-  not_configured: { label: 'Configuration required', cls: 'bg-amber-100 text-amber-800' },
+  connected: { label: 'Connected', tone: 'success' },
+  syncing: { label: 'Syncing', tone: 'info', pulse: true },
+  error: { label: 'Error', tone: 'danger' },
+  disconnected: { label: 'Disconnected', tone: 'muted' },
+  not_configured: { label: 'Configuration required', tone: 'warning' },
 };
 
 export function FigmaLogo() {
-  return (
-    <svg viewBox="0 0 38 57" width="22" height="33" aria-label="Figma logo" role="img">
-      <path fill="#1abcfe" d="M19 28.5a9.5 9.5 0 1 1 19 0 9.5 9.5 0 0 1-19 0z" />
-      <path fill="#0acf83" d="M0 47.5A9.5 9.5 0 0 1 9.5 38H19v9.5a9.5 9.5 0 1 1-19 0z" />
-      <path fill="#ff7262" d="M19 0v19h9.5a9.5 9.5 0 1 0 0-19H19z" />
-      <path fill="#f24e1e" d="M0 9.5A9.5 9.5 0 0 0 9.5 19H19V0H9.5A9.5 9.5 0 0 0 0 9.5z" />
-      <path fill="#a259ff" d="M0 28.5A9.5 9.5 0 0 0 9.5 38H19V19H9.5A9.5 9.5 0 0 0 0 28.5z" />
-    </svg>
-  );
+  return <IntegrationIcon provider="figma" size={40} title="Figma logo" />;
 }
 export function TeamsLogo() {
-  return (
-    <svg viewBox="0 0 32 32" width="30" height="30" aria-label="Microsoft Teams logo" role="img">
-      <rect x="2" y="6" width="20" height="20" rx="3" fill="#5059c9" />
-      <path fill="#fff" d="M7 11h10v2.4h-3.7V21h-2.6v-7.6H7z" />
-      <circle cx="25" cy="10" r="3.5" fill="#7b83eb" />
-      <rect x="21" y="15" width="9" height="10" rx="3" fill="#7b83eb" />
-    </svg>
-  );
+  return <IntegrationIcon provider="microsoft_teams" size={40} title="Microsoft Teams logo" />;
 }
 
-const Badge = ({ state }) => <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide ${STATE[state]?.cls}`}>{STATE[state]?.label ?? state}</span>;
-const Stat = ({ label, value }) => (
-  <div className="rounded-lg border border-slate-200 px-3 py-2">
-    <dt className="text-[11px] uppercase text-slate-500">{label}</dt>
-    <dd className="text-lg font-semibold text-slate-900">{value ?? 0}</dd>
-  </div>
+const StateBadge = ({ state }) => (
+  <Badge tone={STATE[state]?.tone ?? 'neutral'} dot pulse={STATE[state]?.pulse}>
+    {STATE[state]?.label ?? state}
+  </Badge>
 );
+const Stat = MiniStat;
+const cardClass = 'flex flex-col rounded-xl border bg-white p-5';
+const dlClass = 'mt-4 grid gap-x-4 gap-y-1.5 text-sm sm:grid-cols-[8rem_1fr]';
 
-export function IntegrationCards({ onConnect }) {
+export function IntegrationCards({ onConnect, onLoaded }) {
   const [cards, setCards] = useState(null);
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(null);
-  const load = useCallback(() => getOverview().then((d) => setCards(d.cards)).catch(setError), []);
+  const load = useCallback(
+    () =>
+      getOverview()
+        .then((d) => {
+          setCards(d.cards);
+          onLoaded?.(d.cards);
+        })
+        .catch(setError),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
   useEffect(() => {
     load();
   }, [load]);
@@ -89,19 +86,19 @@ function FigmaCard({ c, busy, run, onConnect }) {
   const f = c.figma ?? {};
   const connected = ['connected', 'syncing', 'error'].includes(c.state);
   return (
-    <section aria-label="Figma integration" className="rounded-xl border border-slate-200 bg-white p-5">
+    <section aria-label="Figma integration" className={`${cardClass} border-slate-200`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <FigmaLogo />
           <div>
-            <h2 className="font-semibold text-slate-900">Figma</h2>
-            <p className="text-xs text-slate-500">Design files, versions and comments (OAuth 2.0)</p>
+            <h2 className="text-sm font-semibold text-slate-900">Figma</h2>
+            <p className="mt-0.5 text-xs text-slate-500">Design files, versions and comments (OAuth 2.0)</p>
           </div>
         </div>
-        <Badge state={c.state} />
+        <StateBadge state={c.state} />
       </div>
       {c.state === 'not_configured' && (
-        <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3.5 text-sm text-amber-900">
           <p className="font-medium">Figma is not configured on the server: {c.problem}.</p>
           <p className="mt-1">
             Create a <strong>private</strong> OAuth app in Figma (Developers → Create a new app), add the redirect URL, then set <code>FIGMA_CLIENT_ID</code>, <code>FIGMA_CLIENT_SECRET</code>, <code>FIGMA_TEAM_ID</code> and <code>FIGMA_REDIRECT_URI</code> in <code>backend/.env</code> and restart. Steps: <code>{c.setupDoc}</code>.
@@ -111,7 +108,7 @@ function FigmaCard({ c, busy, run, onConnect }) {
       {c.state === 'disconnected' && <p className="mt-4 text-sm text-slate-600">Not connected. Connect with a Figma account that is a member of the configured team.</p>}
       {connected && (
         <>
-          <dl className="mt-4 grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[8rem_1fr]">
+          <dl className={dlClass}>
             <dt className="text-slate-500">Account</dt>
             <dd>
               {f.account ?? '—'}
@@ -132,7 +129,7 @@ function FigmaCard({ c, busy, run, onConnect }) {
           {f.projectsEnabled === 0 && <p className="mt-2 text-xs text-amber-700">No project is enabled yet: open the details and enable the projects to import.</p>}
         </>
       )}
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-auto flex flex-wrap gap-2 pt-4">
         {c.state === 'disconnected' && (
           <Button disabled={Boolean(busy)} onClick={() => onConnect('figma')}>
             Connect Figma
@@ -140,12 +137,12 @@ function FigmaCard({ c, busy, run, onConnect }) {
         )}
         {connected && (
           <>
-            <Button variant="secondary" disabled={Boolean(busy) || c.state === 'syncing'} onClick={() => run('figma-sync', () => syncNow(c.connection.id), (r) => (r.queued ? `Figma sync queued for ${r.queued} project(s).` : 'Nothing to sync: enable a project first.'))}>
+            <Button variant="secondary" icon={RefreshCw} disabled={Boolean(busy) || c.state === 'syncing'} onClick={() => run('figma-sync', () => syncNow(c.connection.id), (r) => (r.queued ? `Figma sync queued for ${r.queued} project(s).` : 'Nothing to sync: enable a project first.'))}>
               {c.state === 'syncing' ? 'Syncing…' : 'Sync now'}
             </Button>
-            <Link to={`/admin/integrations/${c.connection.id}`} className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
+            <ButtonLink to={`/admin/integrations/${c.connection.id}`} icon={Settings2}>
               Projects and details
-            </Link>
+            </ButtonLink>
             <Button variant="danger" disabled={Boolean(busy)} onClick={() => window.confirm('Disconnect Figma? Imported data is kept; the stored tokens are deleted.') && run('figma-disc', () => disconnect(c.connection.id), 'Figma disconnected. Imported data was kept.')}>
               Disconnect
             </Button>
@@ -161,29 +158,29 @@ function TeamsCard({ c, busy, run, onConnect }) {
   const counts = t?.counts ?? {};
   const active = ['connected', 'syncing', 'error'].includes(c.state);
   return (
-    <section aria-label="Microsoft Teams integration" className={`rounded-xl border bg-white p-5 ${c.mock ? 'border-violet-300' : 'border-slate-200'}`}>
+    <section aria-label="Microsoft Teams integration" className={`${cardClass} ${c.mock ? 'border-violet-300' : 'border-slate-200'}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <TeamsLogo />
           <div>
-            <h2 className="font-semibold text-slate-900">Microsoft Teams</h2>
-            <p className="text-xs text-slate-500">Channels, meetings and transcripts</p>
+            <h2 className="text-sm font-semibold text-slate-900">Microsoft Teams</h2>
+            <p className="mt-0.5 text-xs text-slate-500">Channels, meetings and transcripts</p>
           </div>
         </div>
-        <div className="flex flex-col items-end gap-1">
-          <Badge state={c.state} />
-          {c.mock && <span className="rounded-full bg-violet-600 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-white">Development mock</span>}
+        <div className="flex flex-col items-end gap-1.5">
+          <StateBadge state={c.state} />
+          {c.mock && <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-800">Development mock</span>}
         </div>
       </div>
       {c.mock && (
-        <p className="mt-3 rounded-md bg-violet-50 px-3 py-2 text-xs text-violet-900">
+        <p className="mt-4 rounded-lg border border-violet-300 bg-violet-50 px-3 py-2 text-xs text-violet-900">
           Development mock connection (TEAMS_INTEGRATION_MODE=mock): fictional data, no Microsoft account is connected or verified.
         </p>
       )}
       {c.state === 'not_configured' && <p className="mt-4 text-sm text-amber-800">Not configured on the server: {c.problem}.</p>}
       {c.mock && (active || c.state === 'disconnected') && (
         <>
-          <dl className="mt-4 grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[8rem_1fr]">
+          <dl className={dlClass}>
             <dt className="text-slate-500">Status</dt>
             <dd className="font-semibold">{c.state === 'connected' ? 'CONNECTED' : c.state.toUpperCase()}</dd>
             <dt className="text-slate-500">Mode</dt>
@@ -207,12 +204,10 @@ function TeamsCard({ c, busy, run, onConnect }) {
         </>
       )}
       {!c.mock && c.state === 'disconnected' && <p className="mt-4 text-sm text-slate-600">Not connected. A real connection needs a Microsoft Entra app with admin consent (runbook §12).</p>}
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-auto flex flex-wrap gap-2 pt-4">
         {c.mock ? (
           <>
-            <Link to="/admin/integrations/teams-mock" className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
-              View Teams
-            </Link>
+            <ButtonLink to="/admin/integrations/teams-mock">View Teams</ButtonLink>
             <Button disabled={Boolean(busy)} onClick={() => run('mock-sync', syncTeamsMock, (r) => `Mock data synced: ${r.counts.teams} teams, ${r.counts.channels} channels, ${r.counts.meetings} meetings, ${r.counts.messages} messages.`)}>
               {busy === 'mock-sync' ? 'Syncing…' : 'Sync Mock Data'}
             </Button>

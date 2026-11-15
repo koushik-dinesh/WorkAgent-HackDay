@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { acceptInvitation, verifyInvitation } from '../api/auth.js';
 import { Button, ErrorAlert, Field, inputClass } from '../components/ui.jsx';
+import { AuthLayout } from '../components/AuthLayout.jsx';
 import { fieldErrorsFrom } from '../utils/format.js';
 
 const MIN_LENGTH = 12;
@@ -61,13 +62,8 @@ export function AcceptInvitationPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-sm space-y-5 rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div>
-          <h1 className="text-xl font-semibold">Activate your account</h1>
-          <p className="mt-1 text-sm text-slate-500">WorkAgent</p>
-        </div>
-
+    <AuthLayout title="Activate your account" subtitle="Choose a password to finish setting up WorkAgent.">
+      <div className="space-y-5">
         {loadError ? (
           <InvitationProblem error={loadError} />
         ) : !invitation ? (
@@ -97,13 +93,13 @@ export function AcceptInvitationPage() {
                 onChange={(e) => setConfirm(e.target.value)}
               />
             </Field>
-            <Button type="submit" disabled={saving} className="w-full">
+            <Button type="submit" disabled={saving} className="!h-9 w-full">
               {saving ? 'Activating…' : 'Activate account'}
             </Button>
           </form>
         )}
       </div>
-    </div>
+    </AuthLayout>
   );
 }
 
@@ -119,7 +115,7 @@ function InvitationProblem({ error }) {
   return (
     <div className="space-y-4">
       <ErrorAlert error={message} />
-      <Link to="/login" className="block text-center text-sm font-medium text-slate-900 underline">
+      <Link to="/login" className="block text-center text-sm font-medium text-accent-700 underline-offset-2 hover:underline">
         Go to sign in
       </Link>
     </div>

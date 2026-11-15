@@ -1,3 +1,4 @@
+import { Bell } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { NavLink } from 'react-router';
 import { getUnreadCount } from '../api/me.js';
@@ -38,16 +39,14 @@ export function NotificationBell() {
     <NavLink
       to="/notifications"
       aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'}
+      title="Notifications"
       className={({ isActive }) =>
-        `relative rounded-md border border-slate-300 px-3 py-1.5 hover:bg-slate-50 ${isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-700'}`
+        `relative inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors duration-150 hover:bg-slate-100 hover:text-slate-900 ${isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-500'}`
       }
     >
-      <span className="hidden sm:inline">Notifications</span>
-      <span className="sm:hidden" aria-hidden="true">
-        Inbox
-      </span>
+      <Bell size={16} aria-hidden="true" />
       {unread > 0 && (
-        <span aria-hidden="true" className="absolute -right-2 -top-2 min-w-5 rounded-full bg-red-600 px-1.5 text-center text-xs font-medium leading-5 text-white">
+        <span aria-hidden="true" className="absolute -right-1 -top-1 min-w-4 rounded-full bg-red-600 px-1 text-center text-[10px] font-semibold leading-4 text-white ring-2 ring-canvas">
           {unread > 99 ? '99+' : unread}
         </span>
       )}

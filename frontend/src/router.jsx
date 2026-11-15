@@ -7,6 +7,7 @@ import { LoginPage } from './pages/LoginPage.jsx';
 import { ActivityFeedPage } from './pages/ActivityFeed.jsx';
 import { InsightsPage } from './pages/Insights.jsx';
 import { NotificationsPage } from './pages/Notifications.jsx';
+import { OverviewPage } from './pages/Overview.jsx';
 import { ProfilePage } from './pages/Profile.jsx';
 import { IntegrationSetupPage } from './pages/IntegrationSetup.jsx';
 import { RecordDetailPage } from './pages/RecordDetail.jsx';
@@ -45,9 +46,11 @@ function HomeRedirect() {
 
 function NotFound() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-3">
-      <p className="text-slate-600">Page not found.</p>
-      <Link to="/" className="text-sm font-medium text-slate-900 underline">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-2 px-4 text-center">
+      <p className="text-xs font-medium uppercase tracking-wider text-slate-400">404</p>
+      <p className="text-lg font-semibold text-slate-900">Page not found.</p>
+      <p className="text-sm text-slate-500">The page may have moved, or you may not have access to it.</p>
+      <Link to="/" className="mt-3 text-sm font-medium text-accent-700 underline-offset-2 hover:underline">
         Go home
       </Link>
     </div>
@@ -90,6 +93,8 @@ export const router = createBrowserRouter([
               { path: '/my/tasks/:id', element: <TaskDetail /> },
             ],
           },
+          // Overview for every role: "what needs my attention"; each section reads an endpoint the API scopes.
+          { path: '/overview', element: <OverviewPage /> },
           // Every role; the API decides which projects and teams each person can see or change.
           { path: '/projects', element: <ProjectsPage /> },
           { path: '/projects/:id', element: <ProjectDetailPage /> },

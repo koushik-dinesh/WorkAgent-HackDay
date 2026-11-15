@@ -1,21 +1,28 @@
 // Shared pieces for synced work and WorkAgent records (Phase 4): provider badges, record links,
 // source links and labels. One place, so every screen names things the same way.
 import { Link } from 'react-router';
+import { BrandGlyph } from './icons.jsx';
 
 const PROVIDERS = {
-  workagent: { label: 'WorkAgent', cls: 'bg-slate-900 text-white' },
-  github: { label: 'GitHub', cls: 'bg-slate-700 text-white' },
-  jira: { label: 'Jira', cls: 'bg-blue-600 text-white' },
-  microsoft_teams: { label: 'Teams', cls: 'bg-indigo-600 text-white' },
-  outlook: { label: 'Outlook', cls: 'bg-sky-600 text-white' },
-  google_calendar: { label: 'Google Calendar', cls: 'bg-emerald-600 text-white' },
-  figma: { label: 'Figma', cls: 'bg-fuchsia-600 text-white' },
-  fake: { label: 'Fake', cls: 'bg-slate-200 text-slate-700' },
+  workagent: { label: 'WorkAgent' },
+  github: { label: 'GitHub' },
+  jira: { label: 'Jira' },
+  microsoft_teams: { label: 'Teams' },
+  outlook: { label: 'Outlook' },
+  google_calendar: { label: 'Google Calendar' },
+  figma: { label: 'Figma' },
+  fake: { label: 'Fake' },
 };
 
+/** The source application: its brand mark and name in a quiet chip. */
 export function ProviderBadge({ provider }) {
-  const p = PROVIDERS[provider] ?? { label: provider, cls: 'bg-slate-200 text-slate-700' };
-  return <span className={`inline-block rounded px-1.5 py-0.5 text-[11px] font-medium ${p.cls}`}>{p.label}</span>;
+  const p = PROVIDERS[provider] ?? { label: provider };
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-medium text-slate-700">
+      <BrandGlyph provider={provider} size={11} />
+      {p.label}
+    </span>
+  );
 }
 
 /** [id, label] for every real source, for filters ("fake" only exists in tests and local checks). */
@@ -107,7 +114,7 @@ export function RecordLink({ summary, className = '' }) {
 export function SourceLink({ url, provider, className = '' }) {
   if (!url) return null;
   return (
-    <a href={url} target="_blank" rel="noreferrer noopener" className={`text-xs text-slate-500 underline-offset-2 hover:underline ${className}`}>
+    <a href={url} target="_blank" rel="noreferrer noopener" className={`whitespace-nowrap text-xs text-slate-500 underline-offset-2 transition-colors hover:text-slate-900 hover:underline ${className}`}>
       Open in {PROVIDERS[provider]?.label ?? 'source'} ↗
     </a>
   );

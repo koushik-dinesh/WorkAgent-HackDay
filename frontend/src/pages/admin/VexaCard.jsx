@@ -1,17 +1,30 @@
 // Vexa meeting transcription: connect once, then Google Meet meetings found in connected calendars
 // are transcribed automatically under the organisation's policy. Replaces the former standalone
 // Google Meet integration.
+import { Ban, Bot, CalendarClock, CheckCircle2, CircleAlert, Loader, Mic, Radio, RefreshCw, Settings2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { connectVexa, disconnectVexa, retryVexaSession, saveVexaSettings, skipVexaSession, syncVexa, vexaOverview } from '../../api/vexa.js';
-import { Button, ErrorAlert, Field, SuccessAlert, inputClass } from '../../components/ui.jsx';
+import { IntegrationIcon } from '../../components/icons.jsx';
+import { Badge, Button, ErrorAlert, Field, MiniStat, SuccessAlert, inputClass, table } from '../../components/ui.jsx';
 import { formatDateTime } from '../../utils/format.js';
 
 const STATE = {
-  connected: { label: 'Connected · automatic transcription on', cls: 'bg-emerald-100 text-emerald-800' },
-  paused: { label: 'Connected · automatic transcription off', cls: 'bg-slate-100 text-slate-700' },
-  disconnected: { label: 'Not connected', cls: 'bg-slate-100 text-slate-600' },
-  not_configured: { label: 'Configuration required', cls: 'bg-amber-100 text-amber-800' },
+  connected: { label: 'Connected · automatic transcription on', tone: 'success' },
+  paused: { label: 'Connected · automatic transcription off', tone: 'neutral' },
+  disconnected: { label: 'Not connected', tone: 'muted' },
+  not_configured: { label: 'Configuration required', tone: 'warning' },
+};
+const SESSION_STYLE = {
+  scheduled: { tone: 'neutral', Icon: CalendarClock },
+  dispatching: { tone: 'info', Icon: Bot, pulse: true },
+  joining: { tone: 'info', Icon: Bot, pulse: true },
+  recording: { tone: 'danger', Icon: Radio, pulse: true },
+  processing: { tone: 'info', Icon: Loader, pulse: true },
+  completed: { tone: 'success', Icon: CheckCircle2 },
+  failed: { tone: 'danger', Icon: CircleAlert },
+  cancelled: { tone: 'muted', Icon: Ban },
+  skipped: { tone: 'muted', Icon: Ban },
 };
 const SESSION = {
   scheduled: 'Scheduled',
@@ -26,20 +39,10 @@ const SESSION = {
 };
 const DEFAULT_CONSENT = 'Meeting invitations state that WorkAgent transcribes the meeting. The bot joins as a visible participant, must be admitted by the host, and participants can ask the host to remove it.';
 
-const Stat = ({ label, value }) => (
-  <div className="rounded-lg border border-slate-200 px-3 py-2">
-    <dt className="text-[11px] uppercase text-slate-500">{label}</dt>
-    <dd className="text-lg font-semibold text-slate-900">{value ?? 0}</dd>
-  </div>
-);
+const Stat = MiniStat;
 
 export function VexaLogo() {
-  return (
-    <svg viewBox="0 0 32 32" width="28" height="28" aria-label="Vexa logo" role="img">
-      <rect width="32" height="32" rx="7" fill="#111827" />
-      <path d="M8 10l8 13 8-13" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  return <IntegrationIcon provider="vexa" size={44} title="Vexa logo" />;
 }
 
 export function VexaCard() {
@@ -77,19 +80,24 @@ export function VexaCard() {
   const failed = v.sessions.filter((s) => s.state === 'failed');
 
   return (
-    <section aria-label="Vexa meeting transcription" className="rounded-xl border border-slate-200 bg-white p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
+    <section aria-label="Vexa meeting transcription" className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 bg-slate-50 px-5 py-4">
+        <div className="flex items-center gap-3.5">
           <VexaLogo />
           <div>
-            <h2 className="font-semibold text-slate-900">{v.displayName}</h2>
-            <p className="text-xs text-slate-500">Transcribes Google Meet meetings automatically. Connect once; no per-meeting setup and no separate Google Meet integration.</p>
+            <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-accent-700">
+              <Mic size={11} aria-hidden="true" />
+              Meeting transcription
+            </p>
+            <h2 className="mt-0.5 text-base font-semibold text-slate-900">{v.displayName}</h2>
+            <p className="mt-0.5 max-w-2xl text-xs text-slate-500">Transcribes Google Meet meetings automatically. Connect once; no per-meeting setup and no separate Google Meet integration.</p>
           </div>
         </div>
-        <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide ${st.cls}`}>{st.label}</span>
+        <Badge tone={st.tone} dot>{st.label}</Badge>
       </div>
-      <ErrorAlert error={error} className="mt-3" />
-      <div className="mt-3">
+      <div className="p-5">
+      <div className="space-y-3 empty:hidden">
+        <ErrorAlert error={error} />
         <SuccessAlert>{notice}</SuccessAlert>
       </div>
 
@@ -112,7 +120,7 @@ export function VexaCard() {
 
       {['connected', 'paused'].includes(v.state) && (
         <>
-          <dl className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          <dl className="mt-1 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
             <Stat label="Meetings transcribed" value={v.counts.meetingsProcessed} />
             <Stat label="Upcoming" value={v.counts.upcoming} />
             <Stat label="In progress" value={v.counts.active} />
@@ -120,7 +128,7 @@ export function VexaCard() {
             <Stat label="Not recorded (30 days)" value={v.counts.skipped30d} />
             <Stat label="Bot capacity" value={v.account?.maxConcurrent ?? '—'} />
           </dl>
-          <dl className="mt-4 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-[11rem_1fr]">
+          <dl className="mt-5 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[11rem_1fr]">
             <dt className="text-slate-500">Vexa account</dt>
             <dd>{v.account?.email ?? '—'} {v.account?.verifiedAt && <span className="text-xs text-slate-500">(verified {formatDateTime(v.account.verifiedAt)})</span>}</dd>
             <dt className="text-slate-500">Bot</dt>
@@ -136,19 +144,19 @@ export function VexaCard() {
                 : <span className="text-amber-800">No calendar connected — connect Google Calendar or Outlook below so meetings can be found.</span>}
             </dd>
             <dt className="text-slate-500">Last transcript</dt>
-            <dd>{v.lastTranscript ? <><Link className="underline" to={`/admin/meetings/${v.lastTranscript.meetingId}`}>{v.lastTranscript.title}</Link> · {formatDateTime(v.lastTranscript.at)}</> : 'None yet'}</dd>
+            <dd>{v.lastTranscript ? <><Link className="font-medium text-accent-700 underline-offset-2 hover:underline" to={`/admin/meetings/${v.lastTranscript.meetingId}`}>{v.lastTranscript.title}</Link> · {formatDateTime(v.lastTranscript.at)}</> : 'None yet'}</dd>
             <dt className="text-slate-500">Consent</dt>
             <dd className="text-slate-700">{v.settings.consent?.statement ?? '—'}</dd>
           </dl>
 
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Button variant="secondary" disabled={busy} onClick={() => run(syncVexa, 'Checking calendars now.')}>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Button variant="secondary" icon={RefreshCw} disabled={busy} onClick={() => run(syncVexa, 'Checking calendars now.')}>
               Check calendars now
             </Button>
             <Button variant="secondary" disabled={busy} onClick={() => run(() => saveVexaSettings({ enabled: !v.settings.enabled }), v.settings.enabled ? 'Automatic transcription paused.' : 'Automatic transcription on.')}>
               {v.settings.enabled ? 'Pause automatic transcription' : 'Resume automatic transcription'}
             </Button>
-            <Button variant="secondary" onClick={() => setShowSettings((x) => !x)}>
+            <Button variant="secondary" icon={Settings2} aria-expanded={showSettings} onClick={() => setShowSettings((x) => !x)}>
               {showSettings ? 'Hide settings' : 'Transcription settings'}
             </Button>
             <Button variant="danger" disabled={busy} onClick={() => window.confirm('Disconnect Vexa? Upcoming meetings are no longer recorded; bots already in a meeting finish.') && run(disconnectVexa, 'Disconnected. Upcoming meetings will not be recorded.')}>
@@ -157,7 +165,7 @@ export function VexaCard() {
           </div>
 
           {showSettings && draft && (
-            <div className="mt-4 grid gap-3 rounded-lg border border-slate-200 p-4 sm:grid-cols-2">
+            <div className="mt-4 grid gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2">
               <Field label="Which meetings">
                 <select className={inputClass} value={draft.scope} onChange={(e) => setDraft({ ...draft, scope: e.target.value })}>
                   <option value="organizer">Organised by a WorkAgent member</option>
@@ -184,35 +192,35 @@ export function VexaCard() {
             </div>
           )}
 
-          <h3 className="mt-5 text-sm font-semibold">Meetings{failed.length ? ` · ${failed.length} failed` : ''}</h3>
+          <h3 className="mt-6 text-sm font-semibold text-slate-900">Meetings{failed.length ? ` · ${failed.length} failed` : ''}</h3>
           {v.sessions.length === 0 ? (
             <p className="mt-1 text-sm text-slate-500">No Google Meet meetings found yet in the next {24} hours.</p>
           ) : (
-            <div className="mt-2 overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead className="text-left text-xs uppercase text-slate-500">
+            <div className="mt-2 overflow-x-auto rounded-lg border border-slate-200">
+              <table className={table.table}>
+                <thead className={table.head}>
                   <tr>
-                    <th className="py-1 pr-3">Meeting</th>
-                    <th className="py-1 pr-3">Starts</th>
-                    <th className="py-1 pr-3">State</th>
-                    <th className="py-1" />
+                    <th className={table.th}>Meeting</th>
+                    <th className={table.th}>Starts</th>
+                    <th className={table.th}>State</th>
+                    <th className={table.th} />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className={table.body}>
                   {v.sessions.map((s) => (
-                    <tr key={s.id} className="align-top">
-                      <td className="py-2 pr-3">
-                        {s.meetingId ? <Link className="underline" to={`/admin/meetings/${s.meetingId}`}>{s.title}</Link> : s.title}
+                    <tr key={s.id} className={table.row}>
+                      <td className={table.td}>
+                        {s.meetingId ? <Link className="font-medium text-slate-900 hover:underline" to={`/admin/meetings/${s.meetingId}`}>{s.title}</Link> : <span className="font-medium text-slate-900">{s.title}</span>}
                         <div className="text-xs text-slate-500">{s.organizerEmail}</div>
                       </td>
-                      <td className="whitespace-nowrap py-2 pr-3">{formatDateTime(s.scheduledStart)}</td>
-                      <td className="py-2 pr-3">
-                        <span className={s.state === 'failed' ? 'font-medium text-red-700' : ''}>{SESSION[s.state] ?? s.state}</span>
-                        {s.reason && <div className="text-xs text-slate-500">{s.reason}</div>}
+                      <td className={`${table.td} whitespace-nowrap text-slate-600`}>{formatDateTime(s.scheduledStart)}</td>
+                      <td className={table.td}>
+                        <Badge tone={SESSION_STYLE[s.state]?.tone ?? 'neutral'} icon={SESSION_STYLE[s.state]?.Icon} pulse={SESSION_STYLE[s.state]?.pulse}>{SESSION[s.state] ?? s.state}</Badge>
+                        {s.reason && <div className="mt-1 text-xs text-slate-500">{s.reason}</div>}
                       </td>
-                      <td className="whitespace-nowrap py-2 text-right">
+                      <td className={`${table.td} whitespace-nowrap text-right`}>
                         {['failed', 'skipped', 'cancelled'].includes(s.state) && (
-                          <Button variant="secondary" disabled={busy} onClick={() => run(() => retryVexaSession(s.id), 'Retry scheduled.')}>
+                          <Button variant="secondary" size="sm" disabled={busy} onClick={() => run(() => retryVexaSession(s.id), 'Retry scheduled.')}>
                             Retry
                           </Button>
                         )}
@@ -230,6 +238,7 @@ export function VexaCard() {
           )}
         </>
       )}
+      </div>
     </section>
   );
 }

@@ -1,3 +1,4 @@
+import { Bot, CheckCircle2, CircleAlert, Loader, Radio, TriangleAlert } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { checkBot, getBot, importBotTranscript, requestBot, stopBot } from '../api/bot.js';
 import { formatDateTime } from '../utils/format.js';
@@ -37,11 +38,11 @@ function statusLine(view) {
 }
 
 const TONE = {
-  info: 'bg-sky-50 text-sky-900',
-  live: 'bg-emerald-50 text-emerald-900',
-  ok: 'bg-emerald-50 text-emerald-900',
-  warn: 'bg-amber-50 text-amber-900',
-  error: 'bg-red-50 text-red-800',
+  info: { cls: 'border-sky-200 bg-sky-50 text-sky-900', Icon: Loader },
+  live: { cls: 'border-emerald-200 bg-emerald-50 text-emerald-900', Icon: Radio },
+  ok: { cls: 'border-emerald-200 bg-emerald-50 text-emerald-900', Icon: CheckCircle2 },
+  warn: { cls: 'border-amber-200 bg-amber-50 text-amber-900', Icon: TriangleAlert },
+  error: { cls: 'border-red-200 bg-red-50 text-red-800', Icon: CircleAlert },
 };
 
 /**
@@ -131,21 +132,24 @@ export function MeetingBotPanel({ meetingId, onMeetingChanged }) {
   return (
     <div className="space-y-3" aria-live="polite">
       {!view.configured && (
-        <p className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-600">
+        <p className="rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-600">
           The meeting bot isn’t configured on the server (VEXA_BASE_URL / VEXA_API_KEY). You can still upload a transcript manually.
         </p>
       )}
 
       {view.configured && !b && !view.linkValid && (
-        <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-900">
           The bot can only join Google Meet links like https://meet.google.com/abc-defg-hij. Edit the meeting link, or upload a transcript instead.
         </p>
       )}
 
       {b && (() => {
         const [tone, text] = statusLine(view);
+        const { cls, Icon } = TONE[tone];
         return (
-          <div className={`rounded-md px-3 py-2 text-sm ${TONE[tone]}`} role="status">
+          <div className={`flex items-start gap-2.5 rounded-lg border px-3.5 py-2.5 text-sm ${cls}`} role="status">
+            <Icon size={15} aria-hidden="true" className={`mt-0.5 shrink-0 ${tone === 'live' ? 'animate-pulse' : ''}`} />
+            <div className="min-w-0">
             <p>{text}</p>
             {b.status === 'failed' && view.lastError && <p className="mt-1 text-xs">{view.lastError}</p>}
             {view.meetingStatus === 'extracting' && <p className="mt-1 text-xs">AI extraction has been queued from this transcript.</p>}
@@ -156,6 +160,7 @@ export function MeetingBotPanel({ meetingId, onMeetingChanged }) {
               Requested {formatDateTime(b.requestedAt)}
               {b.checkedAt && ` · last checked ${formatDateTime(b.checkedAt)}`}
             </p>
+            </div>
           </div>
         );
       })()}
@@ -169,7 +174,7 @@ export function MeetingBotPanel({ meetingId, onMeetingChanged }) {
 
       <div className="flex flex-wrap gap-2">
         {view.canRequest && (
-          <Button onClick={request} disabled={Boolean(busy)}>
+          <Button icon={Bot} onClick={request} disabled={Boolean(busy)}>
             {busy === 'request' ? 'Requesting…' : b ? 'Send the bot again' : 'Send bot to meeting'}
           </Button>
         )}

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router';
 import { homePathFor, useAuth } from '../auth/AuthContext.jsx';
+import { AuthLayout } from '../components/AuthLayout.jsx';
+import { Button, ErrorAlert, SuccessAlert, inputClass } from '../components/ui.jsx';
 
 export function LoginPage() {
   const { user, loading, login } = useAuth();
@@ -33,57 +35,26 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-5 rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div>
-          <h1 className="text-xl font-semibold">Sign in</h1>
-          <p className="mt-1 text-sm text-slate-500">WorkAgent</p>
-        </div>
-
-        {activated && !error && (
-          <div role="status" className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-            Your account is active. Sign in with your new password.
-          </div>
-        )}
-
-        {error && (
-          <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {error}
-          </div>
-        )}
+    <AuthLayout title="Sign in" subtitle="Use your WorkAgent account.">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {activated && !error && <SuccessAlert>Your account is active. Sign in with your new password.</SuccessAlert>}
+        <ErrorAlert error={error} />
 
         <label className="block">
-          <span className="text-sm font-medium text-slate-700">Email</span>
-          <input
-            type="email"
-            required
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
-          />
+          <span className="text-[13px] font-medium text-slate-700">Email</span>
+          <input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={`${inputClass} mt-1.5 !py-2`} />
         </label>
 
         <label className="block">
-          <span className="text-sm font-medium text-slate-700">Password</span>
-          <input
-            type="password"
-            required
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
-          />
+          <span className="text-[13px] font-medium text-slate-700">Password</span>
+          <input type="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className={`${inputClass} mt-1.5 !py-2`} />
         </label>
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
-        >
+        <Button type="submit" disabled={submitting} loading={submitting} className="!h-9 w-full">
           {submitting ? 'Signing in…' : 'Sign in'}
-        </button>
+        </Button>
+        <p className="text-center text-xs text-slate-500">Accounts are created by invitation. Ask your administrator if you need access.</p>
       </form>
-    </div>
+    </AuthLayout>
   );
 }

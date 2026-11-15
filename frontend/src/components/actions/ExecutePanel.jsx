@@ -1,10 +1,11 @@
 // "Do something with these action items": pick an action, fill its few options, see the exact
 // preview (every target, recipient and message), approve, and cancel within the window.
 // All writes go through the backend execution engine; this component never talks to a provider.
+import { Ban, Eye, Play, TriangleAlert, Users, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { approvePlan, cancelPlan, executionCapabilities, preparePlan } from '../../api/actions.js';
-import { Button, ErrorAlert, Field, inputClass } from '../ui.jsx';
+import { Button, Callout, ErrorAlert, Field, IconButton, inputClass } from '../ui.jsx';
 
 const TEMPLATES = [
   ['assignment', 'Assignment (to each owner)'],
@@ -75,7 +76,7 @@ function Options({ kind, caps, options, set }) {
         <Field label="Due date" hint="Empty = the action item’s confirmed due date">
           <input type="date" className={inputClass} value={options.dueDate ?? ''} onChange={(e) => set({ ...options, dueDate: e.target.value || undefined })} />
         </Field>
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex items-center gap-2 text-sm text-slate-700">
           <input type="checkbox" checked={Boolean(options.syncAssignee)} onChange={(e) => set({ ...options, syncAssignee: e.target.checked || undefined })} /> Set the Jira assignee to the owner
         </label>
       </>
@@ -133,42 +134,45 @@ function Countdown({ until, onDone }) {
 /** Preview of a prepared plan (also used on the Approvals page). */
 export function PlanPreview({ preview }) {
   return (
-    <div className="space-y-2 text-sm">
+    <div className="space-y-3 text-sm">
       <p className="text-slate-600">
         <span className="font-medium text-slate-900">{preview.summary}</span> · {preview.providerLabel} · {preview.affected.records} write{preview.affected.records === 1 ? '' : 's'}, {preview.affected.people} {preview.affected.people === 1 ? 'person' : 'people'}
       </p>
       {preview.recipients?.length > 0 && (
-        <p>
-          <span className="text-slate-500">Recipients:</span> {preview.recipients.map((r) => `${r.name} <${r.email}>`).join(', ')}
+        <p className="flex items-start gap-1.5">
+          <Users size={14} aria-hidden="true" className="mt-0.5 shrink-0 text-slate-400" />
+          <span>
+            <span className="text-slate-500">Recipients:</span> {preview.recipients.map((r) => `${r.name} <${r.email}>`).join(', ')}
+          </span>
         </p>
       )}
       <ul className="space-y-2">
         {preview.drafts.map((d, n) => (
-          <li key={n} className="rounded-md border border-slate-200 p-3">
+          <li key={n} className="rounded-lg border border-slate-200 bg-white p-3">
             <div className="flex flex-wrap justify-between gap-2">
-              <span className="font-medium">{d.title}</span>
+              <span className="font-medium text-slate-900">{d.title}</span>
               {d.target && <span className="text-xs text-slate-500">→ {d.target}</span>}
             </div>
             {d.skipped && <p className="mt-1 text-xs text-slate-500">Skipped: {d.skipped}</p>}
             {d.content && (
-              <dl className="mt-2 grid gap-x-3 gap-y-1 text-xs sm:grid-cols-[7rem_1fr]">
+              <dl className="mt-2 grid gap-x-3 gap-y-1 border-t border-slate-100 pt-2 text-xs sm:grid-cols-[7rem_1fr]">
                 {Object.entries(d.content)
                   .filter(([, v]) => v !== null && v !== undefined && v !== '' && !(Array.isArray(v) && !v.length))
                   .map(([k, v]) => (
                     <div key={k} className="contents">
                       <dt className="capitalize text-slate-500">{k.replace(/([A-Z])/g, ' $1')}</dt>
-                      <dd className="whitespace-pre-wrap break-words">{Array.isArray(v) ? v.map((x) => (typeof x === 'object' ? x.name ?? JSON.stringify(x) : x)).join(', ') : typeof v === 'object' ? JSON.stringify(v) : String(v)}</dd>
+                      <dd className="whitespace-pre-wrap break-words text-slate-800">{Array.isArray(v) ? v.map((x) => (typeof x === 'object' ? x.name ?? JSON.stringify(x) : x)).join(', ') : typeof v === 'object' ? JSON.stringify(v) : String(v)}</dd>
                     </div>
                   ))}
               </dl>
             )}
-            {d.warnings.map((w) => <p key={w} className="mt-1 text-xs text-amber-800">⚠ {w}</p>)}
-            {d.blockers.map((b) => <p key={b} className="mt-1 text-xs text-red-700">✕ {b}</p>)}
+            {d.warnings.map((w) => <p key={w} className="mt-1.5 flex items-start gap-1.5 text-xs text-amber-800"><TriangleAlert size={12} aria-hidden="true" className="mt-0.5 shrink-0" /><span>{w}</span></p>)}
+            {d.blockers.map((b) => <p key={b} className="mt-1.5 flex items-start gap-1.5 text-xs text-red-700"><Ban size={12} aria-hidden="true" className="mt-0.5 shrink-0" /><span>{b}</span></p>)}
           </li>
         ))}
       </ul>
-      {preview.warnings?.map((w) => <p key={w} className="rounded-md bg-amber-50 px-2 py-1 text-amber-800">{w}</p>)}
-      {preview.blockers?.map((b) => <p key={b} className="rounded-md bg-red-50 px-2 py-1 text-red-700">{b}</p>)}
+      {preview.warnings?.map((w) => <Callout key={w} tone="warning">{w}</Callout>)}
+      {preview.blockers?.map((b) => <Callout key={b} tone="danger">{b}</Callout>)}
     </div>
   );
 }
@@ -221,17 +225,18 @@ export function ExecutePanel({ itemIds, defaultKind = null, onDone = () => {}, o
     });
 
   return (
-    <section aria-label="Execute action" className="space-y-4 rounded-xl border border-slate-300 bg-white p-4">
+    <section aria-label="Execute action" className="space-y-4 rounded-xl border border-accent-200 bg-white p-5 shadow-xs">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-semibold">Act on {itemIds.length} action item{itemIds.length === 1 ? '' : 's'}</h3>
-          <p className="text-xs text-slate-500">You see exactly what will be written before anything happens. Writes use your own permissions in the target application.</p>
+        <div className="flex items-start gap-3">
+          <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-50 text-accent-700">
+            <Play size={15} />
+          </span>
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900">Act on {itemIds.length} action item{itemIds.length === 1 ? '' : 's'}</h3>
+            <p className="mt-0.5 text-xs text-slate-500">You see exactly what will be written before anything happens. Writes use your own permissions in the target application.</p>
+          </div>
         </div>
-        {onClose && (
-          <Button variant="link" onClick={onClose}>
-            Close
-          </Button>
-        )}
+        {onClose && <IconButton icon={X} label="Close" className="-mr-1.5 -mt-1.5" onClick={onClose} />}
       </div>
       <ErrorAlert error={error} />
       {!approved && (
@@ -257,14 +262,15 @@ export function ExecutePanel({ itemIds, defaultKind = null, onDone = () => {}, o
           </Field>
           {kind && <Options kind={kind} caps={kindCaps} options={options} set={(o) => { setOptions(o); setPrepared(null); }} />}
           {kind && (
-            <Button variant="secondary" disabled={busy} onClick={prepare}>
+            <Button variant="secondary" icon={Eye} disabled={busy} onClick={prepare}>
               Preview
             </Button>
           )}
         </>
       )}
       {prepared && !approved && (
-        <div className="space-y-3 border-t border-slate-200 pt-3">
+        <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <h4 className="text-xs font-medium uppercase tracking-wider text-slate-500">Exactly what will be written</h4>
           <PlanPreview preview={prepared.preview} />
           {prepared.preview.requiresLargeConfirmation && (
             <label className="flex items-center gap-2 text-sm text-red-800">
@@ -285,7 +291,7 @@ export function ExecutePanel({ itemIds, defaultKind = null, onDone = () => {}, o
         </div>
       )}
       {approved && (
-        <div role="status" className="space-y-2 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+        <div role="status" className="space-y-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3.5 text-sm text-emerald-900">
           <p>Approved. {approved.cancelUntil ? <>It runs after the cancel window (<Countdown until={approved.cancelUntil} />).</> : 'It is running now.'}</p>
           <div className="flex gap-3">
             {approved.cancelUntil && new Date(approved.cancelUntil) > new Date() && (
@@ -293,7 +299,7 @@ export function ExecutePanel({ itemIds, defaultKind = null, onDone = () => {}, o
                 Cancel
               </Button>
             )}
-            <Link className="self-center underline" to={`/approvals?plan=${approved.plan.id}`}>
+            <Link className="self-center font-medium underline underline-offset-2" to={`/approvals?plan=${approved.plan.id}`}>
               Track it on the Approvals page
             </Link>
           </div>

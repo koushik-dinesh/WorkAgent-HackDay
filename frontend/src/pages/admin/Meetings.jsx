@@ -1,8 +1,10 @@
+import { ChevronLeft, ChevronRight, Plus, Users, Video } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { listMeetings } from '../../api/meetings.js';
 import { EmptyState } from '../../components/EmptyState.jsx';
-import { Button, ErrorAlert, Loading, StatusBadge, inputClass } from '../../components/ui.jsx';
+import { MeetingStatusBadge, meetingStatusLabel } from '../../components/MeetingStatus.jsx';
+import { Button, ButtonLink, ErrorAlert, Loading, PageHeader, SearchInput, inputClass, table } from '../../components/ui.jsx';
 import { formatDateTime } from '../../utils/format.js';
 
 const PAGE_SIZE = 25;
@@ -31,33 +33,26 @@ export function MeetingsPage() {
   const filtered = Boolean(status || search);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">Meetings</h1>
-          <p className="mt-1 text-sm text-slate-500">Create meetings and attach their transcripts.</p>
-        </div>
-        <Link to="/admin/meetings/new" className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800">
-          New meeting
-        </Link>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title="Meetings"
+        description="Create meetings and attach their transcripts."
+        actions={
+          <ButtonLink to="/admin/meetings/new" variant="primary" icon={Plus}>
+            New meeting
+          </ButtonLink>
+        }
+      />
 
       <form
-        className="flex flex-wrap gap-3"
+        className="flex flex-wrap gap-2"
         onSubmit={(e) => {
           e.preventDefault();
           setOffset(0);
           setSearch(query.trim());
         }}
       >
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search titles…"
-          aria-label="Search meetings"
-          className={`${inputClass} max-w-xs`}
-        />
+        <SearchInput className="w-full sm:w-64" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search titles…" aria-label="Search meetings" />
         <select
           value={status}
           onChange={(e) => {
@@ -65,12 +60,12 @@ export function MeetingsPage() {
             setStatus(e.target.value);
           }}
           aria-label="Filter by status"
-          className={`${inputClass} max-w-[12rem]`}
+          className={`${inputClass} w-auto min-w-[10rem]`}
         >
           <option value="">All statuses</option>
           {STATUSES.map((s) => (
             <option key={s} value={s}>
-              {s.replaceAll('_', ' ')}
+              {meetingStatusLabel(s)}
             </option>
           ))}
         </select>
@@ -80,64 +75,66 @@ export function MeetingsPage() {
       </form>
 
       {error && <ErrorAlert error={`Could not load meetings: ${error.message}`} />}
-      {!data && !error && <Loading />}
+      {!data && !error && <Loading rows={6} />}
       {data?.meetings.length === 0 &&
         (filtered ? (
-          <EmptyState title="No matching meetings">Try a different search or status.</EmptyState>
+          <EmptyState title="No matching meetings" icon={Video}>Try a different search or status.</EmptyState>
         ) : (
-          <EmptyState title="No meetings yet">Create your first meeting to attach a transcript.</EmptyState>
+          <EmptyState title="No meetings yet" icon={Video}>Create your first meeting to attach a transcript.</EmptyState>
         ))}
 
       {data?.meetings.length > 0 && (
         <>
-          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+          <div className={table.wrap}>
+            <table className={table.table}>
+              <thead className={table.head}>
                 <tr>
-                  <th className="px-4 py-2 font-medium">Title</th>
-                  <th className="px-4 py-2 font-medium">When</th>
-                  <th className="px-4 py-2 font-medium">Project</th>
-                  <th className="px-4 py-2 font-medium">Status</th>
-                  <th className="px-4 py-2 font-medium">Participants</th>
-                  <th className="px-4 py-2 font-medium">Transcript</th>
+                  <th className={table.th}>Title</th>
+                  <th className={table.th}>When</th>
+                  <th className={`${table.th} hidden md:table-cell`}>Project</th>
+                  <th className={table.th}>Status</th>
+                  <th className={`${table.th} hidden lg:table-cell`}>Participants</th>
+                  <th className={`${table.th} hidden lg:table-cell`}>Transcript</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className={table.body}>
                 {data.meetings.map((m) => (
-                  <tr key={m.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-2">
+                  <tr key={m.id} className={table.row}>
+                    <td className={table.td}>
                       <Link to={`/admin/meetings/${m.id}`} className="font-medium text-slate-900 hover:underline">
                         {m.title}
                       </Link>
                     </td>
-                    <td className="px-4 py-2 text-slate-600">{formatDateTime(m.scheduledAt ?? m.createdAt)}</td>
-                    <td className="px-4 py-2 text-slate-600">{m.project?.name ?? '—'}</td>
-                    <td className="px-4 py-2">
-                      <StatusBadge status={m.status} />
+                    <td className={`${table.td} whitespace-nowrap text-slate-600`}>{formatDateTime(m.scheduledAt ?? m.createdAt)}</td>
+                    <td className={`${table.td} hidden text-slate-600 md:table-cell`}>{m.project?.name ?? <span className="text-slate-400">—</span>}</td>
+                    <td className={table.td}>
+                      <MeetingStatusBadge status={m.status} />
                     </td>
-                    <td className="px-4 py-2 text-slate-600">{m.participantCount}</td>
-                    <td className="px-4 py-2 text-slate-600">
-                      {m.transcriptSegmentCount ? `${m.transcriptSegmentCount} segments` : '—'}
+                    <td className={`${table.td} hidden text-slate-600 lg:table-cell`}>
+                      <span className="inline-flex items-center gap-1.5">
+                        <Users size={13} aria-hidden="true" className="text-slate-400" />
+                        {m.participantCount}
+                      </span>
+                    </td>
+                    <td className={`${table.td} hidden text-slate-600 lg:table-cell`}>
+                      {m.transcriptSegmentCount ? `${m.transcriptSegmentCount} segments` : <span className="text-slate-400">—</span>}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <div className="flex items-center justify-between text-sm text-slate-600">
+          <div className="flex items-center justify-between text-[13px] text-slate-600">
             <span>
               {offset + 1}–{offset + data.meetings.length} of {data.total}
             </span>
             <div className="flex gap-2">
-              <Button variant="secondary" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}>
+              <Button variant="secondary" size="sm" icon={ChevronLeft} disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}>
                 Previous
               </Button>
-              <Button
-                variant="secondary"
-                disabled={offset + PAGE_SIZE >= data.total}
-                onClick={() => setOffset(offset + PAGE_SIZE)}
-              >
+              <Button variant="secondary" size="sm" disabled={offset + PAGE_SIZE >= data.total} onClick={() => setOffset(offset + PAGE_SIZE)}>
                 Next
+                <ChevronRight size={14} aria-hidden="true" />
               </Button>
             </div>
           </div>

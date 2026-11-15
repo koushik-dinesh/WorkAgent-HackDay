@@ -38,3 +38,41 @@ export function formatDate(isoDate) {
   const [y, m, d] = isoDate.split('-').map(Number);
   return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 }
+
+/** "just now", "5 min ago", "3 h ago", "2 d ago", else the date. For timestamps in lists. */
+export function timeAgo(value, now = Date.now()) {
+  if (!value) return '';
+  const diff = Math.max(0, now - new Date(value).getTime());
+  const min = Math.floor(diff / 60_000);
+  if (min < 1) return 'just now';
+  if (min < 60) return `${min} min ago`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h} h ago`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d} d ago`;
+  return new Date(value).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+/** Whole days from today to a 'YYYY-MM-DD' date in the viewer's timezone (negative = past). */
+export function daysUntil(isoDate, now = new Date()) {
+  if (!isoDate) return null;
+  const [y, m, d] = String(isoDate).slice(0, 10).split('-').map(Number);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((new Date(y, m - 1, d) - today) / 86_400_000);
+}
+
+/** 'YYYY-MM-DD' -> "6 Nov" (adds the year when it is not the current one). */
+export function formatShortDate(isoDate) {
+  if (!isoDate) return '';
+  const [y, m, d] = String(isoDate).slice(0, 10).split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { day: 'numeric', month: 'short', ...(y !== new Date().getFullYear() && { year: 'numeric' }) });
+}
+
+/** Day heading for grouped lists: "Today", "Yesterday", else "Mon, 2 Nov". */
+export function dayLabel(value, now = new Date()) {
+  const d = new Date(value);
+  const days = Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 86_400_000);
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', ...(d.getFullYear() !== now.getFullYear() && { year: 'numeric' }) });
+}

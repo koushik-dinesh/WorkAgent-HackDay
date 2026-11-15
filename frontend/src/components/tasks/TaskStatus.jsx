@@ -1,18 +1,17 @@
 import { useState } from 'react';
 import { updateMyTaskStatus } from '../../api/tasks.js';
-import { Button, ErrorAlert } from '../ui.jsx';
+import { Badge, Button, ErrorAlert } from '../ui.jsx';
 
 export const STATUS_LABEL = { todo: 'Not started', in_progress: 'In progress', blocked: 'Blocked', done: 'Completed' };
-const STATUS_STYLE = {
-  todo: 'bg-slate-100 text-slate-700',
-  in_progress: 'bg-sky-100 text-sky-800',
-  blocked: 'bg-amber-100 text-amber-800',
-  done: 'bg-emerald-100 text-emerald-800',
-};
+const STATUS_TONE = { todo: 'neutral', in_progress: 'info', blocked: 'warning', done: 'success' };
 export const PRIORITY_STYLE = { high: 'bg-rose-100 text-rose-700', medium: 'bg-slate-100 text-slate-700', low: 'bg-slate-100 text-slate-500' };
 
 export function TaskStatusBadge({ status }) {
-  return <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[status]}`}>{STATUS_LABEL[status]}</span>;
+  return (
+    <Badge tone={STATUS_TONE[status]} dot>
+      {STATUS_LABEL[status]}
+    </Badge>
+  );
 }
 
 // Button label for moving from `from` to `to`.
@@ -56,7 +55,7 @@ export function TaskStatusControl({ task, onUpdated, compact = false }) {
           <Button
             key={s}
             variant={i === 0 ? 'primary' : 'secondary'}
-            className={compact ? '!px-2.5 !py-1.5 text-xs' : ''}
+            size={compact ? 'sm' : 'md'}
             disabled={busy}
             onClick={() => change(s)}
           >

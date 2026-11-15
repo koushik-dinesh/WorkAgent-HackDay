@@ -1,21 +1,46 @@
 // Shared labels for action items: lifecycle states, sources, categories, owner kinds.
 // One restrained palette: neutral for in-review states, blue for in-flight, green for done,
 // red only for failures, amber for "needs a person".
+import { SignalHigh, SignalLow, SignalMedium } from 'lucide-react';
+import { Badge } from '../ui.jsx';
+
 export const LIFECYCLE = {
-  extracted: { label: 'Extracted', cls: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200' },
-  needs_review: { label: 'Needs review', cls: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200' },
-  approved: { label: 'Approved', cls: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200' },
-  scheduled: { label: 'Scheduled', cls: 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200' },
-  executing: { label: 'Executing', cls: 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200' },
-  completed: { label: 'Completed', cls: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200' },
-  failed: { label: 'Failed', cls: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-200' },
-  retry_required: { label: 'Retry required', cls: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-200' },
-  rejected: { label: 'Rejected', cls: 'bg-slate-100 text-slate-500 line-through dark:bg-slate-800 dark:text-slate-400' },
+  extracted: { label: 'Extracted', tone: 'neutral' },
+  needs_review: { label: 'Needs review', tone: 'warning' },
+  approved: { label: 'Approved', tone: 'success' },
+  scheduled: { label: 'Scheduled', tone: 'info' },
+  executing: { label: 'Executing', tone: 'info', pulse: true },
+  completed: { label: 'Completed', tone: 'success' },
+  failed: { label: 'Failed', tone: 'danger' },
+  retry_required: { label: 'Retry required', tone: 'danger' },
+  rejected: { label: 'Rejected', tone: 'muted' },
 };
 
 export function LifecycleBadge({ state }) {
-  const s = LIFECYCLE[state] ?? { label: state?.replaceAll('_', ' ') ?? '—', cls: 'bg-slate-100 text-slate-700' };
-  return <span className={`inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${s.cls}`}>{s.label}</span>;
+  const s = LIFECYCLE[state] ?? { label: state?.replaceAll('_', ' ') ?? '—', tone: 'neutral' };
+  return (
+    <Badge tone={s.tone} dot pulse={s.pulse} className={state === 'rejected' ? 'line-through' : ''}>
+      {s.label}
+    </Badge>
+  );
+}
+
+const PRIORITY = {
+  high: { label: 'High', Icon: SignalHigh, cls: 'text-red-700' },
+  medium: { label: 'Medium', Icon: SignalMedium, cls: 'text-amber-700' },
+  low: { label: 'Low', Icon: SignalLow, cls: 'text-slate-400' },
+};
+
+/** Priority as a signal-strength icon; `showLabel` adds the word next to it. */
+export function PriorityIndicator({ priority, showLabel = false }) {
+  const p = PRIORITY[priority];
+  if (!p) return null;
+  return (
+    <span title={`${p.label} priority`} className={`inline-flex items-center gap-1 ${p.cls}`}>
+      <p.Icon size={15} aria-hidden="true" />
+      {showLabel ? <span className="text-slate-700">{p.label}</span> : <span className="sr-only">{p.label} priority</span>}
+    </span>
+  );
 }
 
 export const SOURCES = {
